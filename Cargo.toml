@@ -1,0 +1,16 @@
+[package]
+name          = "oxide_control"
+version       = "0.1.0"
+edition       = "2024"
+authors       = ["kanarus <kanarus786@gmail.com>"]
+documentation = "https://docs.rs/oxide_control"
+homepage      = "https://crates.io/crates/oxide_control"
+repository    = "https://github.com/rust-control/oxide_control"
+readme        = "README.md"
+license       = "MIT"
+description   = ""
+keywords      = ["mujoco", "rl", "ml", "physics", "robotics"]
+categories    = ["science::robotics", "simulation"]
+
+[dependencies]
+rusty_mujoco = { path = "../rusty_mujoco" }
