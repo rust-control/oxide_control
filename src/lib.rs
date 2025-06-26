@@ -31,8 +31,8 @@ where
 {
     task: T,
     physics: T::Physics,
-    __o__: std::marker::PhantomData<O>,
-    __a__: std::marker::PhantomData<A>,
+    _o: std::marker::PhantomData<O>,
+    _a: std::marker::PhantomData<A>,
 }
 
 pub enum TimeStep<O> {
@@ -60,7 +60,6 @@ where
 
     pub fn step(&mut self, action: A) -> TimeStep<O> {
         action.apply(self.physics.actuators());
-
         self.physics.step();
 
         let observation = O::generate(&self.physics);
