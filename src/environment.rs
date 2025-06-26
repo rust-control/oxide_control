@@ -14,17 +14,10 @@ pub trait Action {
     type Environment: Environment;
 }
 
-pub struct TimeStep<O> {
-    pub step_type: StepType,
-    pub reward: f32,
-    pub discount: f32,
-    pub observation: O,
-}
-
-pub enum StepType {
-    First,
-    Mid,
-    Last,
+pub enum TimeStep<O> {
+    First { observation: O },
+    Mid { observation: O, discount: f64 },
+    Last { observation: O, reward: f64, discount: f64 },
 }
 
 pub struct ArraySpec {
