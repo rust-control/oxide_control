@@ -128,3 +128,5 @@ impl Physics {
         unsafe { self.data.ctrl_mut(self.model.nu()) }
     }
 }
+
+pub struct Acturators<'a>();

@@ -3,16 +3,36 @@ pub mod physics;
 
 pub use physics::Physics as RawPhysics;
 
-/* core interfaces */
+pub trait Physics: std::ops::DerefMut<Target = RawPhysics> {}
 
-pub trait Environment<T, O, A>
+pub trait Task {
+    type Physics: Physics;
+    fn discount(&self) -> f64;
+    fn init_episode(&mut self, physics: &mut Self::Physics);
+    fn should_finish_episode(&self, physics: &Self::Physics) -> bool;
+    fn get_reward(&self, physics: &Self::Physics) -> f64;
+}
+
+pub trait Observation {
+    type Physics: Physics;
+    fn generate(physics: &Self::Physics) -> Self;
+}
+
+pub trait Action {
+    type Physics: Physics;
+    fn apply(self, physics: &mut Self::Physics);
+}
+
+pub struct Environment<T, O, A>
 where
     T: Task,
     O: Observation<Physics = T::Physics>,
     A: Action<Physics = T::Physics>,
 {
-    fn reset(&mut self) -> O;
-    fn step(&mut self, action: A) -> TimeStep<O>;
+    task: T,
+    physics: T::Physics,
+    __o__: std::marker::PhantomData<O>,
+    __a__: std::marker::PhantomData<A>,
 }
 
 pub enum TimeStep<O: Observation> {
@@ -27,22 +47,36 @@ pub enum TimeStep<O: Observation> {
     },
 }
 
-pub trait Phyics: std::ops::DerefMut<Target = RawPhysics> {}
+impl<T, O, A> Environment<T, O, A>
+where
+    T: Task,
+    O: Observation<Physics = T::Physics>,
+    A: Action<Physics = T::Physics>,
+{
+    pub fn reset(&mut self) -> O {
+        self.task.init_episode(&mut self.physics);
+        O::generate(&self.physics)
+    }
 
-pub trait Task {
-    type Physics: Phyics;
-    fn init_episode(&mut self, physics: &mut Self::Physics);
-    fn should_finish_episode(&self, physics: &Self::Physics) -> bool;
-    fn get_reward(&self, physics: &Self::Physics) -> f64;
-    fn get_discount(&self, physics: &Self::Physics) -> f64;
-}
+    pub fn step(&mut self, action: A) -> TimeStep<O> {
+        action.apply(&mut self.physics);
 
-pub trait Observation {
-    type Physics: Phyics;
-    fn generate(physics: &Self::Physics) -> Self;
-}
+        self.physics.step();
 
-pub trait Action {
-    type Physics: Phyics;
-    fn apply(self, physics: &mut Self::Physics);
+        let observation = O::generate(&self.physics);
+        let reward = self.task.get_reward(&self.physics);
+        
+        if self.task.should_finish_episode(&self.physics) {
+            TimeStep::Finish {
+                observation,
+                reward,
+            }
+        } else {
+            TimeStep::Step {
+                observation,
+                reward,
+                discount: self.task.discount(),
+            }
+        }
+    }
 }
