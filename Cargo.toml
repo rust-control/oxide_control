@@ -14,3 +14,4 @@ categories    = ["science::robotics", "simulation"]
 
 [dependencies]
 rusty_mujoco = { path = "../rusty_mujoco" }
+ndarray = { version = "0.16" }
