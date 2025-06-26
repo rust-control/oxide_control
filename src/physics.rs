@@ -129,4 +129,38 @@ impl Physics {
     }
 }
 
-pub struct Acturators<'a>();
+pub struct Acturators<'a> {
+    physics: &'a mut Physics,
+    name_to_id: rustc_hash::FxHashMap<&'static str, ObjectId<binding::obj::Actuator>>,
+}
+
+impl Physics {
+    pub fn actuators(&mut self) -> Acturators<'_> {
+        Acturators {
+            physics: self,
+            name_to_id: rustc_hash::FxHashMap::default(),
+        }
+    }
+}
+
+impl<'a> Acturators<'a> {
+    pub fn set_control(
+        &mut self,
+        name: &'static str,
+        control: impl AsRef<[f64]>,
+    ) -> Result<(), Error> {
+        let id = match self.name_to_id.get(name) {
+            Some(&id) => id,
+            None => {
+                let id = self.physics.model.object_id_of::<binding::obj::Actuator>(name)
+                    .ok_or(Error::NameNotFound(name))?;
+                self.name_to_id.insert(name, id);
+                id
+            }
+        };
+
+        let control_dimension = self.physics.model().actu;
+
+        todo!()
+    }
+}

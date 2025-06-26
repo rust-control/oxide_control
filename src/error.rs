@@ -1,6 +1,7 @@
 pub enum Error {
     Mujoco(::rusty_mujoco::MjError),
     Mjs(String),
+    NameNotFound(&'static str),
 }
 
 impl From<::rusty_mujoco::MjError> for Error {
@@ -14,6 +15,7 @@ impl std::fmt::Debug for Error {
         match self {
             Error::Mujoco(e) => write!(f, "Error::MuJoCo({e:?})"),
             Error::Mjs(msg) => write!(f, "Error::Mjs({msg})"),
+            Error::NameNotFound(name) => write!(f, "Error::NameNotFound({name})"),
         }
     }
 }
@@ -23,6 +25,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::Mujoco(e) => write!(f, "MuJoCo error: {e}"),
             Error::Mjs(msg) => write!(f, "MuJoCo error: {msg}"),
+            Error::NameNotFound(name) => write!(f, "Given name not found: `{name}`"),
         }
     }
 }
@@ -32,6 +35,7 @@ impl std::error::Error for Error {
         match self {
             Error::Mujoco(e) => Some(e),
             Error::Mjs(_) => None,
+            Error::NameNotFound(_) => None,
         }
     }
 }
