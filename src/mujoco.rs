@@ -5,6 +5,24 @@ pub use binding::{ObjectId, ObjType, Obj};
 pub struct Model(binding::MjModel);
 
 impl Model {
+    pub(crate) fn new(model: binding::MjModel) -> Self {
+        Self(model)
+    }
+}
+impl std::ops::Deref for Model {
+    type Target = binding::MjModel;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for Model {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Model {
     pub fn object_id_of<O: Obj>(&self, name: &str) -> Option<ObjectId<O>> {
         binding::mj_name2id::<O>(&self.0, name)
     }
@@ -29,3 +47,23 @@ impl Model {
 }
 
 pub struct Data(binding::MjData);
+
+impl Data {
+    pub(crate) fn new(data: binding::MjData) -> Self {
+        Self(data)
+    }
+}
+impl std::ops::Deref for Data {
+    type Target = binding::MjData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for Data {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Data {}
