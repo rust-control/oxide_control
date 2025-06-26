@@ -20,7 +20,7 @@ pub trait Observation {
 
 pub trait Action {
     type Physics: Physics;
-    fn apply(self, physics: &mut Self::Physics);
+    fn apply(self, actuators: physics::Acturators);
 }
 
 pub struct Environment<T, O, A>
@@ -59,7 +59,7 @@ where
     }
 
     pub fn step(&mut self, action: A) -> TimeStep<O> {
-        action.apply(&mut self.physics);
+        action.apply(self.physics.actuators());
 
         self.physics.step();
 

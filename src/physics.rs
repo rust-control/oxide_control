@@ -144,11 +144,7 @@ impl Physics {
 }
 
 impl<'a> Acturators<'a> {
-    pub fn set_control(
-        &mut self,
-        name: &'static str,
-        control: impl AsRef<[f64]>,
-    ) -> Result<(), Error> {
+    pub fn set(&mut self, name: &'static str, control: f64) -> Result<(), Error> {
         let id = match self.name_to_id.get(name) {
             Some(&id) => id,
             None => {
@@ -159,8 +155,9 @@ impl<'a> Acturators<'a> {
             }
         };
 
-        let control_dimension = self.physics.model().actu;
+        let nu = self.physics.model().nu();
+        (unsafe { self.physics.data_mut().ctrl_mut(nu) })[id.index()] = control;
 
-        todo!()
+        Ok(())
     }
 }
