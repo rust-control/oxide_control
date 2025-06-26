@@ -129,21 +129,21 @@ impl Physics {
     }
 }
 
-pub struct Acturators<'a> {
+pub struct Actuators<'a> {
     physics: &'a mut Physics,
     name_to_id: rustc_hash::FxHashMap<&'static str, ObjectId<binding::obj::Actuator>>,
 }
 
 impl Physics {
-    pub fn actuators(&mut self) -> Acturators<'_> {
-        Acturators {
+    pub fn actuators(&mut self) -> Actuators<'_> {
+        Actuators {
             physics: self,
             name_to_id: rustc_hash::FxHashMap::default(),
         }
     }
 }
 
-impl<'a> Acturators<'a> {
+impl<'a> Actuators<'a> {
     pub fn set(&mut self, name: &'static str, control: f64) -> Result<(), Error> {
         let id = match self.name_to_id.get(name) {
             Some(&id) => id,

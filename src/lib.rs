@@ -8,7 +8,7 @@ pub trait Physics: std::ops::DerefMut<Target = RawPhysics> {}
 pub trait Task {
     type Physics: Physics;
     fn discount(&self) -> f64;
-    fn init_episode(&mut self, physics: &mut Self::Physics);
+    fn init_episode(&self, physics: &mut Self::Physics);
     fn should_finish_episode(&self, physics: &Self::Physics) -> bool;
     fn get_reward(&self, physics: &Self::Physics) -> f64;
 }
@@ -20,7 +20,7 @@ pub trait Observation {
 
 pub trait Action {
     type Physics: Physics;
-    fn apply(self, actuators: physics::Acturators);
+    fn apply(self, actuators: physics::Actuators<'_>);
 }
 
 pub struct Environment<T, O, A>
@@ -35,7 +35,7 @@ where
     __a__: std::marker::PhantomData<A>,
 }
 
-pub enum TimeStep<O: Observation> {
+pub enum TimeStep<O> {
     Step {
         observation: O,
         reward: f64,
