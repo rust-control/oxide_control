@@ -1,5 +1,5 @@
 use qtable::{QTable, QUpdate, strategy};
-use oxide_control::physics::binding::obj;
+use oxide_control::physics::binding::obj;// TODO: reexport at more shallow place
 
 struct Acrobot(oxide_control::RawPhysics);
 
@@ -21,7 +21,7 @@ impl oxide_control::Physics for Acrobot {}
 struct AcrobotObservation {
     elbow_orientation: Orientation,
     shoulder_orientation: Orientation,
-    
+
 }
 struct Orientation {
     sin: f64,
@@ -47,6 +47,10 @@ impl oxide_control::Task for BalanceTask {
         let elbow_id = physics.model().object_id_of::<obj::Joint>("elbow").unwrap();
         let shoulder_id = physics.model().object_id_of::<obj::Joint>("shoulder").unwrap();
 
+        // TODO: https://github.com/rust-control/rusty_mujoco/issues/2
+        let elbow_qpos_offset = physics.model().jnt_qposadr()[elbow_id.index()] as usize;
+        let shoulder_qpos_offset = physics.model().jnt_qposadr()[shoulder_id.index()] as usize;
+
         let mut rng = rand::rng();
         let qpos_mut = unsafe {// TODO: prepare a better way to access and mutate `qpos` and others like `qvel`
             let nq = physics.model().nq();
@@ -56,8 +60,8 @@ impl oxide_control::Task for BalanceTask {
         // TODO: check each joint's qpos element size
         // (here we already know `elbow` and `shoulder` are both 1 element)
         let elbow_qpos_range = if self.do_swing {-(PI/2.)..(PI/2.)} else {-(PI/10.)..(PI/10.)};
-        qpos_mut[elbow_id.index()] = rng.random_range(elbow_qpos_range);
-        qpos_mut[shoulder_id.index()] = 0.;
+        qpos_mut[elbow_qpos_offset] = rng.random_range(elbow_qpos_range);
+        qpos_mut[shoulder_qpos_offset] = 0.;
     }
 
     fn should_finish_episode(&self, physics: &Self::Physics) -> bool {
