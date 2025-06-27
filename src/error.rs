@@ -2,6 +2,7 @@ pub enum Error {
     Mujoco(::rusty_mujoco::MjError),
     Mjs(String),
     NameNotFound(&'static str),
+    PhysicsDiverged,
 }
 
 impl From<::rusty_mujoco::MjError> for Error {
@@ -16,6 +17,7 @@ impl std::fmt::Debug for Error {
             Error::Mujoco(e) => write!(f, "Error::MuJoCo({e:?})"),
             Error::Mjs(msg) => write!(f, "Error::Mjs({msg})"),
             Error::NameNotFound(name) => write!(f, "Error::NameNotFound({name})"),
+            Error::PhysicsDiverged => write!(f, "Error::PhysicsDiverged"),
         }
     }
 }
@@ -26,6 +28,7 @@ impl std::fmt::Display for Error {
             Error::Mujoco(e) => write!(f, "MuJoCo error: {e}"),
             Error::Mjs(msg) => write!(f, "MuJoCo error: {msg}"),
             Error::NameNotFound(name) => write!(f, "Given name not found: `{name}`"),
+            Error::PhysicsDiverged => write!(f, "Physics simulation diverged"),
         }
     }
 }
@@ -36,6 +39,7 @@ impl std::error::Error for Error {
             Error::Mujoco(e) => Some(e),
             Error::Mjs(_) => None,
             Error::NameNotFound(_) => None,
+            Error::PhysicsDiverged => None,
         }
     }
 }

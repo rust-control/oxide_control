@@ -1,0 +1,9 @@
+<!-- https://github.com/google-deepmind/dm_control/blob/33cea512329bdea46db177dd6c2f8ccb7b68ae73/dm_control/suite/common/visual.xml -->
+
+<mujoco>
+  <visual>
+    <headlight ambient=".4 .4 .4" diffuse=".8 .8 .8" specular="0.1 0.1 0.1"/>
+    <map znear=".01"/>
+    <quality shadowsize="2048"/>
+  </visual>
+</mujoco>

@@ -35,6 +35,22 @@ where
     _a: std::marker::PhantomData<A>,
 }
 
+impl<T, O, A> Environment<T, O, A>
+where
+    T: Task,
+    O: Observation<Physics = T::Physics>,
+    A: Action<Physics = T::Physics>,
+{
+    pub fn new(physics: T::Physics, task: T) -> Self {
+        Self {
+            task,
+            physics,
+            _o: std::marker::PhantomData,
+            _a: std::marker::PhantomData,
+        }
+    }
+}
+
 pub enum TimeStep<O> {
     Step {
         observation: O,

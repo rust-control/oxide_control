@@ -1,0 +1,40 @@
+<mujoco model="acrobot">  
+  <include file="./common/visual.xml"/>
+  <include file="./common/skybox.xml"/>
+  <include file="./common/materials.xml"/>
+
+  <default>
+    <geom type="capsule" mass="1.0"/>
+  </default>
+
+  <option timestep="0.01" integrator="RK4">
+    <flag constraint="enable" energy="enable"/>
+  </option>
+
+  <worldbody>
+    <light name="light" pos="0 0 6"/>
+    <geom name="floor" size="3 3 .2" type="plane" material="grid"/>
+    <site name="target" type="sphere" pos="0 0 4" size="0.2" material="target" group="3"/>
+    <camera name="fixed" pos="0 -1 2" zaxis="0 -1 0"/>
+    <camera name="lookat" mode="targetbodycom" target="upper_arm" pos="0 -1 2"/>
+    <!-- arm -->
+    <body name="upper_arm" pos="0 0 2">
+        <inertial pos="0.1077 0 0" diaginertia="0.00099829 0.00099829 0.00099829" mass="0.257"/>
+        <joint name="shoulder" type="hinge" axis="0 0 1" damping="0.02" frictionloss="0.068"/>
+        <geom name="upper_arm_decoration" material="decoration" type="cylinder" fromto="0 0 -.01 0 0 .01" size="0.011" mass="0.0"/>
+        <geom name="upper_arm" fromto="0 0 0 0.2154 0 0" size="0.01" material="self" rgba="1 1 0 0.6" mass=".0"/>
+        <!-- pendulum -->
+        <body name="lower_arm" pos="0.2154 0 0">
+            <inertial pos="0 0 0.1682" diaginertia="0.0012 0.0012 0.0012" mass="0.127"/>
+            <joint name="elbow" type="hinge" axis="1 0 0" damping="0.00245" frictionloss="0.02"/>
+            <geom name="lower_arm" fromto="0 0 0 0 0 0.3365" size="0.009" material="self" rgba="1 0 1 0.6" mass=".0"/>
+            <site name="tip" pos="0 0 0.3365" size="0.01"/>
+            <geom name="lower_arm_decoration" material="decoration" type="cylinder" fromto="-.01 0 0 .01 0 0" size="0.011" mass=".0"/>
+        </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="shoulder" joint="shoulder" gear="1" ctrllimited="true" ctrlrange="-1. 1."/>
+  </actuator>
+</mujoco>

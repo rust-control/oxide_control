@@ -1,0 +1,8 @@
+<!-- https://github.com/google-deepmind/dm_control/blob/33cea512329bdea46db177dd6c2f8ccb7b68ae73/dm_control/suite/common/skybox.xml -->
+
+<mujoco>
+  <asset>
+      <texture name="skybox" type="skybox" builtin="gradient" rgb1=".4 .6 .8" rgb2="0 0 0"
+               width="800" height="800" mark="random" markrgb="1 1 1"/>
+  </asset>
+</mujoco>

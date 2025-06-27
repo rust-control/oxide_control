@@ -1,0 +1,10 @@
+[package]
+name = "acrobot-qtable"
+version = "0.0.0"
+edition = "2024"
+authors = ["kanarus <kanarus786@gmail.com>"]
+
+[dependencies]
+oxide_control = { path = "../.." }
+qtable = { path = "../../../qtable" }
+
