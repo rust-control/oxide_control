@@ -7,4 +7,4 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 [dependencies]
 oxide_control = { path = "../.." }
 qtable = { path = "../../../qtable" }
-
+rand = "0.9"

@@ -41,7 +41,7 @@ impl Model {
             ObjType::Camera => self.0.ncam(),
             ObjType::Light => self.0.nlight(),
             ObjType::Tendon => self.0.ntendon(),
-            ObjType::Actuator => self.0.na(),
+            ObjType::Actuator => self.0.nu(),
             _ => 0,
         }
     }
