@@ -1,4 +1,5 @@
 use qtable::{QTable, QUpdate, strategy};
+use oxide_control::physics::binding::obj;
 
 struct Acrobot(oxide_control::RawPhysics);
 
@@ -33,22 +34,28 @@ impl oxide_control::Task for BalanceTask {
         use std::f64::consts::PI;
         use rand::Rng;
 
-        let (elbow_id, shoulder_id) = (
-            physycs.model.object_id_of(mujoco::ObjectType::mjOBJ_JOINT, "elbow").unwrap(),
-            physycs.model.object_id_of(mujoco::ObjectType::mjOBJ_JOINT, "shoulder").unwrap(),
-        );
-        if self.do_swing {
-            physycs.set_position(elbow_id, [rand::rng().random_range(-(PI/2.)..(PI/2.))]).unwrap();
-        } else {
-            physycs.set_position(elbow_id, [rand::rng().random_range(-(PI/10.)..(PI/10.))]).unwrap();
-        }
-        physycs.set_position(shoulder_id, [0.0]).unwrap();
+        let elbow_id = physics.model().object_id_of::<obj::Joint>("elbow").unwrap();
+        let shoulder_id = physics.model().object_id_of::<obj::Joint>("shoulder").unwrap();
+
+        let mut rng = rand::rng();
+        let qpos_mut = unsafe {// TODO: prepare a better way to access and mutate `qpos` and others like `qvel`
+            let nq = physics.model().nq();
+            physics.data_mut().qpos_mut(nq)
+        };
+        
+        // TODO: check each joint's qpos element size
+        // (here we already know `elbow` and `shoulder` are both 1 element)
+        let elbow_qpos_range = if self.do_swing {-(PI/2.)..(PI/2.)} else {-(PI/10.)..(PI/10.)};
+        qpos_mut[elbow_id.index()] = rng.random_range(elbow_qpos_range);
+        qpos_mut[shoulder_id.index()] = 0.;
     }
 
     fn should_finish_episode(&self, physics: &Self::Physics) -> bool {
+        false // physics.get_position(shoulder_id).unwrap() > 0.2
     }
 
     fn get_reward(&self, physics: &Self::Physics) -> f64 {
+        todo!()
     }
 }
 
@@ -63,10 +70,10 @@ impl Agent {
         }
     }
 
-    fn get_action_by_explore(
-        &self,
-        observation: &Observation,
-    )
+    // fn get_action_by_explore(
+    //     &self,
+    //     observation: &Observation,
+    // )
 }
 
 fn main() {
