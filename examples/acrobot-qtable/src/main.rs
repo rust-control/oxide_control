@@ -18,6 +18,16 @@ impl std::ops::DerefMut for Acrobot {
 
 impl oxide_control::Physics for Acrobot {}
 
+struct AcrobotObservation {
+    elbow_orientation: Orientation,
+    shoulder_orientation: Orientation,
+    
+}
+struct Orientation {
+    sin: f64,
+    cos: f64,
+}
+
 struct BalanceTask {
     do_swing: bool,
     discount: f64,
