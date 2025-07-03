@@ -3,6 +3,10 @@ pub enum Error {
     Mjs(String),
     NameNotFound(&'static str),
     PhysicsDiverged,
+    JointTypeNotMatch {
+        expected: ::rusty_mujoco::bindgen::mjtJoint,
+        found: ::rusty_mujoco::bindgen::mjtJoint,
+    },
 }
 
 impl From<::rusty_mujoco::MjError> for Error {
@@ -18,6 +22,9 @@ impl std::fmt::Debug for Error {
             Error::Mjs(msg) => write!(f, "Error::Mjs({msg})"),
             Error::NameNotFound(name) => write!(f, "Error::NameNotFound({name})"),
             Error::PhysicsDiverged => write!(f, "Error::PhysicsDiverged"),
+            Error::JointTypeNotMatch { expected, found } => {
+                write!(f, "Error::JointTypeNotMatch(expected: {expected:?}, found: {found:?})")
+            }
         }
     }
 }
@@ -29,6 +36,9 @@ impl std::fmt::Display for Error {
             Error::Mjs(msg) => write!(f, "MuJoCo error: {msg}"),
             Error::NameNotFound(name) => write!(f, "Given name not found: `{name}`"),
             Error::PhysicsDiverged => write!(f, "Physics simulation diverged"),
+            Error::JointTypeNotMatch { expected, found } => {
+                write!(f, "Joint type mismatch: expected {expected:?}, found {found:?}")
+            }
         }
     }
 }
@@ -40,6 +50,7 @@ impl std::error::Error for Error {
             Error::Mjs(_) => None,
             Error::NameNotFound(_) => None,
             Error::PhysicsDiverged => None,
+            Error::JointTypeNotMatch { .. } => None,
         }
     }
 }
