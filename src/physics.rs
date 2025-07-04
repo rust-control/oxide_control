@@ -1,20 +1,29 @@
+mod data;
+mod model;
+
+use data::Data;
+use model::Model;
+
 pub use rusty_mujoco as binding;
-pub use binding::{mjModel, mjData, ObjectId, obj};
+pub use binding::{ObjectId, obj};
 
 use binding::{Obj, mjtObj};
 use crate::error::Error;
 use rustc_hash::FxHashMap;
 
 pub struct Physics {
-    model: mjModel,
-    data: mjData,
+    model: Model,
+    data: Data,
 }
 
 impl Physics {
     pub fn from_xml(xml_path: impl AsRef<std::path::Path>) -> Result<Self, Error> {
         let model = binding::mj_loadXML(xml_path.as_ref().to_str().unwrap())?;
         let data = binding::mj_makeData(&model);
-        Ok(Self { model, data })
+        Ok(Self {
+            model: Model { binding: model },
+            data: Data { binding: data },
+        })
     }
 
     pub fn from_xml_string(xml_string: impl Into<String>) -> Result<Self, Error> {
@@ -22,57 +31,60 @@ impl Physics {
         let model = binding::mj_compile(&mut spec)
             .ok_or_else(|| Error::Mjs(binding::mjs_getError(&mut spec).unwrap_or_else(String::new)))?;
         let data = binding::mj_makeData(&model);
-        Ok(Self { model, data })
+        Ok(Self {
+            model: Model { binding: model },
+            data: Data { binding: data },
+        })
     }
 
-    pub fn model(&self) -> &mjModel {
+    pub fn model(&self) -> &Model {
         &self.model
     }
 
-    pub fn data(&self) -> &mjData {
+    pub fn data(&self) -> &Data {
         &self.data
     }
-    pub fn data_mut(&mut self) -> &mut mjData {
+    pub fn data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
 
     pub fn step(&mut self) {
-        rusty_mujoco::mj_step(&self.model, &mut self.data);
+        rusty_mujoco::mj_step(&self.model.binding, &mut self.data.binding);
     }
 
     pub fn forward(&mut self) {
-        rusty_mujoco::mj_forward(&self.model, &mut self.data);
+        rusty_mujoco::mj_forward(&self.model.binding, &mut self.data.binding);
     }
 
     pub fn reset(&mut self) {
-        rusty_mujoco::mj_resetData(&self.model, &mut self.data);
+        rusty_mujoco::mj_resetData(&self.model.binding, &mut self.data.binding);
     }
 
     pub fn object_id_of<O: Obj>(&self, name: &str) -> Option<ObjectId<O>> {
-        binding::mj_name2id::<O>(&self.model, name)
+        binding::mj_name2id::<O>(&self.model.binding, name)
     }
 
     pub fn object_name_of<O: Obj>(&self, id: ObjectId<O>) -> String {
-        binding::mj_id2name::<O>(&self.model, id)
+        binding::mj_id2name::<O>(&self.model.binding, id)
     }
 
     pub fn object_count_of<O: Obj>(&self) -> usize {
         match O::TYPE {
-            mjtObj::BODY => self.model.nbody(),
-            mjtObj::JOINT => self.model.njnt(),
-            mjtObj::GEOM => self.model.ngeom(),
-            mjtObj::SITE => self.model.nsite(),
-            mjtObj::CAMERA => self.model.ncam(),
-            mjtObj::LIGHT => self.model.nlight(),
-            mjtObj::TENDON => self.model.ntendon(),
-            mjtObj::ACTUATOR => self.model.nu(),
+            mjtObj::BODY => self.model.binding.nbody(),
+            mjtObj::JOINT => self.model.binding.njnt(),
+            mjtObj::GEOM => self.model.binding.ngeom(),
+            mjtObj::SITE => self.model.binding.nsite(),
+            mjtObj::CAMERA => self.model.binding.ncam(),
+            mjtObj::LIGHT => self.model.binding.nlight(),
+            mjtObj::TENDON => self.model.binding.ntendon(),
+            mjtObj::ACTUATOR => self.model.binding.nu(),
             _ => 0,
         }
     }
 }
 
 /* TODO:
-remote `type Qpos` and use `[f64; J::QPOS_SIZE]`, and the same for qvel,
+remove `type Qpos` and use `[f64; J::QPOS_SIZE]`, and the same for qvel,
 when `generic_const_exprs` language feature is stable
 */
 #[allow(private_bounds)]
@@ -129,13 +141,13 @@ pub mod joint {
 
 impl Physics {
     pub fn time(&self) -> f64 {
-        self.data.time()
+        self.data.binding.time()
     }
     pub fn set_time(&mut self, time: f64) {
-        self.data.set_time(time);
+        self.data.binding.set_time(time);
     }
 
-    pub fn qpos<J: JointType>(&self, id: ObjectId<obj::Joint>) -> Result<J::Qpos, Error> {
+    pub fn qpos_of<J: JointType>(&self, id: ObjectId<obj::Joint>) -> Result<J::Qpos, Error> {
         let jnt_type = unsafe { std::mem::transmute(self.model.jnt_type()[id.index()]) };
         if jnt_type == J::MJT {
             let raw_qpos = unsafe { self.data.qpos(self.model()) };
@@ -145,7 +157,7 @@ impl Physics {
             Err(Error::JointTypeNotMatch { expected: J::MJT, found: jnt_type })
         }
     }
-    pub fn set_qpos<J: JointType>(&mut self, id: ObjectId<obj::Joint>, qpos: J::Qpos) -> Result<(), Error> {
+    pub fn set_qpos_of<J: JointType>(&mut self, id: ObjectId<obj::Joint>, qpos: J::Qpos) -> Result<(), Error> {
         // TODO: provide a way cast enum like `mjtJoint` to integer primitive
         let jnt_type = unsafe { std::mem::transmute(self.model.jnt_type()[id.index()]) };
         if jnt_type == J::MJT {
