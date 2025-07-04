@@ -7,10 +7,19 @@ pub trait Physics: std::ops::DerefMut<Target = RawPhysics> {}
 
 pub trait Task {
     type Physics: Physics;
+    type Observation: Observation<Physics = Self::Physics>;
     fn discount(&self) -> f64;
     fn init_episode(&self, physics: &mut Self::Physics);
-    fn should_finish_episode(&self, physics: &Self::Physics) -> bool;
-    fn get_reward(&self, physics: &Self::Physics) -> f64;
+    fn should_finish_episode(
+        &self,
+        observation: &Self::Observation,
+        physics: &Self::Physics,
+    ) -> bool;
+    fn get_reward(
+        &self,
+        observation: &Self::Observation,
+        physics: &Self::Physics,
+    ) -> f64;
 }
 
 pub trait Observation {
@@ -25,7 +34,7 @@ pub trait Action {
 
 pub struct Environment<T, O, A>
 where
-    T: Task,
+    T: Task<Observation = O>,
     O: Observation<Physics = T::Physics>,
     A: Action<Physics = T::Physics>,
 {
@@ -37,7 +46,7 @@ where
 
 impl<T, O, A> Environment<T, O, A>
 where
-    T: Task,
+    T: Task<Observation = O>,
     O: Observation<Physics = T::Physics>,
     A: Action<Physics = T::Physics>,
 {
@@ -65,7 +74,7 @@ pub enum TimeStep<O> {
 
 impl<T, O, A> Environment<T, O, A>
 where
-    T: Task,
+    T: Task<Observation = O>,
     O: Observation<Physics = T::Physics>,
     A: Action<Physics = T::Physics>,
 {
@@ -79,9 +88,9 @@ where
         self.physics.step();
 
         let observation = O::generate(&self.physics);
-        let reward = self.task.get_reward(&self.physics);
+        let reward = self.task.get_reward(&observation, &self.physics);
         
-        if self.task.should_finish_episode(&self.physics) {
+        if self.task.should_finish_episode(&observation, &self.physics) {
             TimeStep::Finish {
                 observation,
                 reward,

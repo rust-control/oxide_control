@@ -56,6 +56,8 @@ struct BalanceTask {
 
 impl oxide_control::Task for BalanceTask {
     type Physics = Acrobot;
+    
+    type Observation = AcrobotObservation;
 
     fn discount(&self) -> f64 {
         self.discount
@@ -85,11 +87,11 @@ impl oxide_control::Task for BalanceTask {
         qpos_mut[shoulder_qpos_offset] = 0.;
     }
 
-    fn should_finish_episode(&self, physics: &Self::Physics) -> bool {
+    fn should_finish_episode(&self, observation: &Self::Observation, physics: &Self::Physics) -> bool {
         false // physics.get_position(shoulder_id).unwrap() > 0.2
     }
 
-    fn get_reward(&self, physics: &Self::Physics) -> f64 {
+    fn get_reward(&self, observation: &Self::Observation, physics: &Self::Physics) -> f64 {
         todo!()
     }
 }
