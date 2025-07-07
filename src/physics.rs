@@ -83,10 +83,45 @@ impl Physics {
     }
 }
 
+pub struct Actuators<'a> {
+    physics: &'a mut Physics,
+    name_to_id: FxHashMap<&'static str, ObjectId<binding::obj::Actuator>>,
+}
+
+impl Physics {
+    pub fn actuators(&mut self) -> Actuators<'_> {
+        Actuators {
+            physics: self,
+            name_to_id: FxHashMap::default(),
+        }
+    }
+}
+
+impl<'a> Actuators<'a> {
+    pub fn set(&mut self, name: &'static str, control: f64) -> Result<(), Error> {
+        let id = match self.name_to_id.get(name) {
+            Some(&id) => id,
+            None => {
+                let id = self.physics.object_id_of::<binding::obj::Actuator>(name)
+                    .ok_or(Error::NameNotFound(name))?;
+                self.name_to_id.insert(name, id);
+                id
+            }
+        };
+
+        let Physics { model, data } = &mut self.physics;
+
+        // TODO: provide safe ways to these (model, data) -> slice methods
+        // via the `Physics`, that has a set of them
+        (unsafe { data.ctrl_mut(&model) })[id.index()] = control;
+
+        Ok(())
+    }
+}
+
 /* TODO:
 remove `type Qpos` and use `[f64; J::QPOS_SIZE]`, and the same for qvel,
-when `generic_const_exprs` language feature is stable
-*/
+when `generic_const_exprs` language feature is stabilzed */
 #[allow(private_bounds)]
 pub trait JointType: joint::Sealed {
     const MJT: binding::bindgen::mjtJoint;
@@ -174,41 +209,5 @@ impl Physics {
     pub fn control(&mut self) -> &mut [f64] {
         let Self { model, data } = self;
         unsafe { data.ctrl_mut(&model) }
-    }
-}
-
-pub struct Actuators<'a> {
-    physics: &'a mut Physics,
-    name_to_id: FxHashMap<&'static str, ObjectId<binding::obj::Actuator>>,
-}
-
-impl Physics {
-    pub fn actuators(&mut self) -> Actuators<'_> {
-        Actuators {
-            physics: self,
-            name_to_id: FxHashMap::default(),
-        }
-    }
-}
-
-impl<'a> Actuators<'a> {
-    pub fn set(&mut self, name: &'static str, control: f64) -> Result<(), Error> {
-        let id = match self.name_to_id.get(name) {
-            Some(&id) => id,
-            None => {
-                let id = self.physics.object_id_of::<binding::obj::Actuator>(name)
-                    .ok_or(Error::NameNotFound(name))?;
-                self.name_to_id.insert(name, id);
-                id
-            }
-        };
-
-        let Physics { model, data } = &mut self.physics;
-
-        // TODO: provide safe ways to these (model, data) -> slice methods
-        // via the `Physics`, that has a set of them
-        (unsafe { data.ctrl_mut(&model) })[id.index()] = control;
-
-        Ok(())
     }
 }
