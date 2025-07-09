@@ -53,6 +53,10 @@ impl oxide_control::Observation for AcrobotObservation {
 struct BalanceTask {
     do_swing: bool,
     discount: f64,
+    n_arm_digitization: usize,
+    n_pendulum_digitization: usize,
+    arm_limit: std::ops::Range<f64>,
+    pendulum_limit: std::ops::Range<f64>,
 }
 
 impl oxide_control::Task for BalanceTask {
@@ -74,7 +78,28 @@ impl oxide_control::Task for BalanceTask {
     }
 
     fn should_finish_episode(&self, observation: &Self::Observation, physics: &Self::Physics) -> bool {
-        false // physics.get_position(shoulder_id).unwrap() > 0.2
+        /*
+        ```python
+        d_arm = self.config.num_digitized_arm
+        d_pendulum = self.config.num_digitized_pendulum
+
+        n_arm_rad = np.digitize(obs[0], np.linspace(self.env._arm_limit[0], self.env._arm_limit[1], d_arm +1)[1:-1])
+        n_arm_vel = np.digitize(obs[2].clip(-8, 8), np.linspace(-8, 8, d_arm+1)[1:-1])
+        n_pen_rad = np.digitize(obs[1], np.linspace(self.env._pendulum_limit[0], self.env._pendulum_limit[1], d_pendulum+1)[1:-1] + self.env._arrange)
+        n_pen_vel = np.digitize(obs[3].clip(-8, 8), np.linspace(-8, 8, d_pendulum+1)[1:-1])
+
+        arm_cond = n_arm_rad == 0 or n_arm_rad >= d_arm - 1
+        pen_cond = n_pen_rad == 0 or n_pen_rad >= d_pendulum -1
+        if arm_cond or pen_cond:
+            return True
+        else:
+            return False
+        ```
+        */
+
+        let n_arm_rad
+
+        todo!()
     }
 
     fn get_reward(&self, observation: &Self::Observation, physics: &Self::Physics) -> f64 {
