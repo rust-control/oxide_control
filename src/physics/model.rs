@@ -1,6 +1,6 @@
 use super::{Error, JointType};
 use super::binding::{
-    obj, Obj, ObjectId, wrap, Wrap, WrapObjectId,
+    obj, Obj, ObjectId,
     ElementDataId, EdgeDataId, ShellDataId, NodeId, VertexId, EdgeId, ElementId, EvPairId, TexcoordId, NormalId, FaceId, BoneId, BoneVertexId, HFieldDataId, TexDataId,
     helper::Rgba,
 };

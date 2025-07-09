@@ -182,17 +182,23 @@ impl Physics {
         self.data.binding.set_time(time);
     }
 
-    pub fn qpos_of<J: JointType>(&self, id: ObjectId<obj::Joint>) -> Result<J::Qpos, Error> {
-        let jnt_type = unsafe { std::mem::transmute(self.model.jnt_type()[id.index()]) };
+    pub fn control(&mut self) -> &mut [f64] {
+        let Self { model, data } = self;
+        unsafe { data.binding.ctrl_mut(&model.binding) }
+    }
+
+    pub fn qpos<J: JointType>(&self, id: ObjectId<obj::Joint>) -> Result<J::Qpos, Error> {
+        let Self { model, data } = self;
+        let jnt_type = unsafe { std::mem::transmute(model.binding.jnt_type()[id.index()]) };
         if jnt_type == J::MJT {
-            let raw_qpos = unsafe { self.data.qpos(self.model()) };
-            let offset = self.model.jnt_qposadr()[id.index()] as usize;
+            let raw_qpos = unsafe { data.binding.qpos(&model.binding) };
+            let offset = model.binding.jnt_qposadr()[id.index()] as usize;
             Ok(J::Qpos::try_from(&raw_qpos[offset..(offset + J::QPOS_SIZE)]).ok().unwrap())
         } else {
             Err(Error::JointTypeNotMatch { expected: J::MJT, found: jnt_type })
         }
     }
-    pub fn set_qpos_of<J: JointType>(&mut self, id: ObjectId<obj::Joint>, qpos: J::Qpos) -> Result<(), Error> {
+    pub fn set_qpos<J: JointType>(&mut self, id: ObjectId<obj::Joint>, qpos: J::Qpos) -> Result<(), Error> {
         // TODO: provide a way cast enum like `mjtJoint` to integer primitive
         let jnt_type = unsafe { std::mem::transmute(self.model.jnt_type()[id.index()]) };
         if jnt_type == J::MJT {
@@ -204,10 +210,5 @@ impl Physics {
         } else {
             Err(Error::JointTypeNotMatch { expected: J::MJT, found: jnt_type })
         }
-    }
-
-    pub fn control(&mut self) -> &mut [f64] {
-        let Self { model, data } = self;
-        unsafe { data.ctrl_mut(&model) }
     }
 }
