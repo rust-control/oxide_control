@@ -102,18 +102,13 @@ impl<'a> Actuators<'a> {
         let id = match self.name_to_id.get(name) {
             Some(&id) => id,
             None => {
-                let id = self.physics.object_id_of::<binding::obj::Actuator>(name)
-                    .ok_or(Error::NameNotFound(name))?;
+                let id = self.physics.object_id_of::<binding::obj::Actuator>(name).ok_or(Error::NameNotFound(name))?;
                 self.name_to_id.insert(name, id);
                 id
             }
         };
 
-        let Physics { model, data } = &mut self.physics;
-
-        // TODO: provide safe ways to these (model, data) -> slice methods
-        // via the `Physics`, that has a set of them
-        (unsafe { data.ctrl_mut(&model) })[id.index()] = control;
+        self.physics.set_ctrl(id, control);
 
         Ok(())
     }
@@ -182,33 +177,168 @@ impl Physics {
         self.data.binding.set_time(time);
     }
 
-    pub fn control(&mut self) -> &mut [f64] {
+    pub fn ctrl(&self, id: ObjectId<obj::Actuator>) -> f64 {
         let Self { model, data } = self;
-        unsafe { data.binding.ctrl_mut(&model.binding) }
+        (unsafe { data.binding.ctrl(&model.binding) })[id.index()]
+    }
+    pub fn set_ctrl(&mut self, id: ObjectId<obj::Actuator>, value: f64) {
+        let Self { model, data } = self;
+        (unsafe { data.binding.ctrl_mut(&model.binding) })[id.index()] = value;
+    }
+
+    pub fn act(&self, id: ObjectId<obj::Actuator>) -> Option<f64> {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.act(&model.binding) };
+        let offset = model.actuator_actadr(id)?;
+        Some(slice[offset])
+    }
+    pub fn set_act(&mut self, id: ObjectId<obj::Actuator>, value: f64) -> Result<(), Error> {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.act_mut(&model.binding) };
+        let offset = model.actuator_actadr(id).ok_or(Error::ActuatorStateless(id))?;
+        slice[offset] = value;
+        Ok(())
     }
 
     pub fn qpos<J: JointType>(&self, id: ObjectId<obj::Joint>) -> Result<J::Qpos, Error> {
         let Self { model, data } = self;
         let jnt_type = unsafe { std::mem::transmute(model.binding.jnt_type()[id.index()]) };
         if jnt_type == J::MJT {
-            let raw_qpos = unsafe { data.binding.qpos(&model.binding) };
-            let offset = model.binding.jnt_qposadr()[id.index()] as usize;
-            Ok(J::Qpos::try_from(&raw_qpos[offset..(offset + J::QPOS_SIZE)]).ok().unwrap())
+            let slice = unsafe { data.binding.qpos(&model.binding) };
+            let offset = model.jnt_qposadr(id);
+            Ok(J::Qpos::try_from(&slice[offset..(offset + J::QPOS_SIZE)]).ok().unwrap())
         } else {
             Err(Error::JointTypeNotMatch { expected: J::MJT, found: jnt_type })
         }
     }
     pub fn set_qpos<J: JointType>(&mut self, id: ObjectId<obj::Joint>, qpos: J::Qpos) -> Result<(), Error> {
-        // TODO: provide a way cast enum like `mjtJoint` to integer primitive
-        let jnt_type = unsafe { std::mem::transmute(self.model.jnt_type()[id.index()]) };
+        let Self { model, data } = self;
+        let jnt_type = unsafe { std::mem::transmute(model.binding.jnt_type()[id.index()]) };
         if jnt_type == J::MJT {
-            let Self { model, data } = self;
-            let raw_qpos = unsafe { data.qpos_mut(model) };
-            let offset = model.jnt_qposadr()[id.index()] as usize;
-            raw_qpos[offset..(offset + J::QPOS_SIZE)].copy_from_slice(qpos.as_ref());
+            let slice = unsafe { data.binding.qpos_mut(&model.binding) };
+            let offset = model.jnt_qposadr(id);
+            slice[offset..(offset + J::QPOS_SIZE)].copy_from_slice(qpos.as_ref());
             Ok(())
         } else {
             Err(Error::JointTypeNotMatch { expected: J::MJT, found: jnt_type })
         }
     }
+
+    pub fn qvel<J: JointType>(&self, id: ObjectId<obj::Joint>) -> Result<J::Qvel, Error> {
+        let Self { model, data } = self;
+        let jnt_type = unsafe { std::mem::transmute(model.binding.jnt_type()[id.index()]) };
+        if jnt_type == J::MJT {
+            let slice = unsafe { data.binding.qvel(&model.binding) };
+            let offset = model.jnt_dofadr(id).expect("Currently we don't support `weld` joint here, so this will not be None...");
+            Ok(J::Qvel::try_from(&slice[offset..(offset + J::QVEL_SIZE)]).ok().unwrap())
+        } else {
+            Err(Error::JointTypeNotMatch { expected: J::MJT, found: jnt_type })
+        }
+    }
+    pub fn set_qvel<J: JointType>(&mut self, id: ObjectId<obj::Joint>, qvel: J::Qvel) -> Result<(), Error> {
+        let Self { model, data } = self;
+        let jnt_type = unsafe { std::mem::transmute(model.binding.jnt_type()[id.index()]) };
+        if jnt_type == J::MJT {
+            let slice = unsafe { data.binding.qvel_mut(&model.binding) };
+            if let Some(offset) = model.jnt_dofadr(id) {
+                slice[offset..(offset + J::QVEL_SIZE)].copy_from_slice(qvel.as_ref());
+            }
+            Ok(())
+        } else {
+            Err(Error::JointTypeNotMatch { expected: J::MJT, found: jnt_type })
+        }
+    }
+
+    pub fn qacc_warmstart(&self, id: ObjectId<obj::Dof>) -> f64 {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.qacc_warmstart(&model.binding) };
+        slice[id.index()]
+    }
+    pub fn set_qacc_warmstart(&mut self, id: ObjectId<obj::Dof>, value: f64) {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.qacc_warmstart_mut(&model.binding) };
+        slice[id.index()] = value;
+    }
+
+    pub fn plugin_state(&self, id: ObjectId<obj::Plugin>) -> Option<f64> {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.plugin_state(&model.binding) };
+        let offset = model.plugin_stateadr(id)?;
+        Some(slice[offset])
+    }
+    pub fn set_plugin_state(&mut self, id: ObjectId<obj::Plugin>, value: f64) -> Result<(), Error> {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.plugin_state_mut(&model.binding) };
+        let offset = model.plugin_stateadr(id).ok_or(Error::PluginStateless(id))?;
+        slice[offset] = value;
+        Ok(())
+    }
+
+    pub fn qfrc_applied(&self, id: ObjectId<obj::Dof>) -> f64 {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.qfrc_applied(&model.binding) };
+        slice[id.index()]
+    }
+    pub fn set_qfrc_applied(&mut self, id: ObjectId<obj::Dof>, value: f64) {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.qfrc_applied_mut(&model.binding) };
+        slice[id.index()] = value;
+    }
+
+    pub fn xfrc_applied(&self, id: ObjectId<obj::Body>) -> [f64; 6] {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.xfrc_applied(&model.binding) };
+        let offset = id.index() * 6;
+        std::array::from_fn(|i| slice[offset + i])
+    }
+    pub fn set_xfrc_applied(&mut self, id: ObjectId<obj::Body>, value: [f64; 6]) {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.xfrc_applied_mut(&model.binding) };
+        let offset = id.index() * 6;
+        slice[offset..(offset + 6)].copy_from_slice(&value);
+    }
+
+    pub fn eq_active(&self, id: ObjectId<obj::Equality>) -> bool {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.eq_active(&model.binding) };
+        slice[id.index()]
+    }
+    pub fn set_eq_active(&mut self, id: ObjectId<obj::Equality>, value: bool) {
+        let Self { model, data } = self;
+        let slice = unsafe { data.binding.eq_active_mut(&model.binding) };
+        slice[id.index()] = value;
+    }
+
+    pub fn mocap_pos(&self, id: ObjectId<obj::Body>) -> Option<(f64, f64, f64)> {
+        let Self { model, data } = self;
+        let id = model.body_mocapid(id)?;
+        let slice = unsafe { data.binding.mocap_pos(&model.binding) };
+        let offset = id.index() * 3;
+        Some((slice[offset], slice[offset + 1], slice[offset + 2]))
+    }
+    pub fn set_mocap_pos(&mut self, id: ObjectId<obj::Body>, pos: (f64, f64, f64)) -> Result<(), Error> {
+        let Self { model, data } = self;
+        let id = model.body_mocapid(id).ok_or(Error::BodyNotMocap(id))?;
+        let slice = unsafe { data.binding.mocap_pos_mut(&model.binding) };
+        let offset = id.index() * 3;
+        slice[offset..(offset + 3)].copy_from_slice(&[pos.0, pos.1, pos.2]);
+        Ok(())
+    }
+
+    pub fn mocap_quat(&self, id: ObjectId<obj::Body>) -> Option<(f64, f64, f64, f64)> {
+        let Self { model, data } = self;
+        let id = model.body_mocapid(id)?;
+        let slice = unsafe { data.binding.mocap_quat(&model.binding) };
+        let offset = id.index() * 4;
+        Some((slice[offset], slice[offset + 1], slice[offset + 2], slice[offset + 3]))
+    }
+    pub fn set_mocap_quat(&mut self, id: ObjectId<obj::Body>, quat: (f64, f64, f64, f64)) -> Result<(), Error> {
+        let Self { model, data } = self;
+        let id = model.body_mocapid(id).ok_or(Error::BodyNotMocap(id))?;
+        let slice = unsafe { data.binding.mocap_quat_mut(&model.binding) };
+        let offset = id.index() * 4;
+        slice[offset..(offset + 4)].copy_from_slice(&[quat.0, quat.1, quat.2, quat.3]);
+        Ok(())
+    }
+    /**/
 }

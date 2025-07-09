@@ -1,3 +1,5 @@
+use rusty_mujoco::{obj, ObjectId};
+
 pub enum Error {
     Mujoco(::rusty_mujoco::MjError),
     Mjs(String),
@@ -7,6 +9,9 @@ pub enum Error {
         expected: ::rusty_mujoco::bindgen::mjtJoint,
         found: ::rusty_mujoco::bindgen::mjtJoint,
     },
+    ActuatorStateless(ObjectId<obj::Actuator>),
+    PluginStateless(ObjectId<obj::Plugin>),
+    BodyNotMocap(ObjectId<obj::Body>),
 }
 
 impl From<::rusty_mujoco::MjError> for Error {
@@ -25,6 +30,15 @@ impl std::fmt::Debug for Error {
             Error::JointTypeNotMatch { expected, found } => {
                 write!(f, "Error::JointTypeNotMatch(expected: {expected:?}, found: {found:?})")
             }
+            Error::ActuatorStateless(actuator_id) => {
+                write!(f, "Error::ActuatorStateless({actuator_id:?})")
+            }
+            Error::PluginStateless(plugin_id) => {
+                write!(f, "Error::PluginStateless({plugin_id:?})")
+            }
+            Error::BodyNotMocap(body_id) => {
+                write!(f, "Error::BodyNotMocap({body_id:?})")
+            }
         }
     }
 }
@@ -39,6 +53,15 @@ impl std::fmt::Display for Error {
             Error::JointTypeNotMatch { expected, found } => {
                 write!(f, "Joint type mismatch: expected {expected:?}, found {found:?}")
             }
+            Error::ActuatorStateless(actuator_id) => {
+                write!(f, "Actuator with ID {actuator_id:?} is stateless unexpectedly")
+            }
+            Error::PluginStateless(plugin_id) => {
+                write!(f, "Plugin with ID {plugin_id:?} is stateless unexpectedly")
+            }
+            Error::BodyNotMocap(body_id) => {
+                write!(f, "Body with ID {body_id:?} is not a mocap body")
+            }
         }
     }
 }
@@ -51,6 +74,9 @@ impl std::error::Error for Error {
             Error::NameNotFound(_) => None,
             Error::PhysicsDiverged => None,
             Error::JointTypeNotMatch { .. } => None,
+            Error::ActuatorStateless(_) => None,
+            Error::PluginStateless(_) => None,
+            Error::BodyNotMocap(_) => None,
         }
     }
 }
