@@ -238,14 +238,14 @@ impl Model {
         self.binding.jnt_stiffness()[id.index()]
     }
     /// joint limits
-    pub fn jnt_range(&self, id: ObjectId<obj::Joint>) -> impl std::ops::RangeBounds<f64> {
+    pub fn jnt_range(&self, id: ObjectId<obj::Joint>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.jnt_range(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// range of total actuator force
-    pub fn jnt_actfrcrange(&self, id: ObjectId<obj::Joint>) -> impl std::ops::RangeBounds<f64> {
+    pub fn jnt_actfrcrange(&self, id: ObjectId<obj::Joint>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.jnt_actfrcrange(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// min distance for limit detection
     pub fn jnt_margin(&self, id: ObjectId<obj::Joint>) -> f64 {
@@ -1325,14 +1325,14 @@ impl Model {
         [it[offset], it[offset + 1], it[offset + 2], it[offset + 3], it[offset + 4]]
     }
     /// tendon length limits
-    pub fn tendon_range(&self, id: ObjectId<obj::Tendon>) -> impl std::ops::RangeBounds<f64> {
+    pub fn tendon_range(&self, id: ObjectId<obj::Tendon>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.tendon_range(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// range of total actuator force
-    pub fn tendon_actfrcrange(&self, id: ObjectId<obj::Tendon>) -> impl std::ops::RangeBounds<f64> {
+    pub fn tendon_actfrcrange(&self, id: ObjectId<obj::Tendon>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.tendon_actfrcrange(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// min distance for limit detection
     pub fn tendon_margin(&self, id: ObjectId<obj::Tendon>) -> f64 {
@@ -1355,9 +1355,9 @@ impl Model {
         self.binding.tendon_frictionloss()[id.index()]
     }
     /// spring resting length range
-    pub fn tendon_lengthspring(&self, id: ObjectId<obj::Tendon>) -> impl std::ops::RangeBounds<f64> {
+    pub fn tendon_lengthspring(&self, id: ObjectId<obj::Tendon>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.tendon_lengthspring(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// tendon length in qpos0
     pub fn tendon_length0(&self, id: ObjectId<obj::Tendon>) -> f64 {
@@ -1461,19 +1461,19 @@ impl Model {
         self.binding.actuator_actearly()[id.index()] != 0
     }
     /// range of controls
-    pub fn actuator_ctrlrange(&self, id: ObjectId<obj::Actuator>) -> impl std::ops::RangeBounds<f64> {
+    pub fn actuator_ctrlrange(&self, id: ObjectId<obj::Actuator>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.actuator_ctrlrange(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// range of forces
-    pub fn actuator_forcerange(&self, id: ObjectId<obj::Actuator>) -> impl std::ops::RangeBounds<f64> {
+    pub fn actuator_forcerange(&self, id: ObjectId<obj::Actuator>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.actuator_forcerange(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// range of activations
-    pub fn actuator_actrange(&self, id: ObjectId<obj::Actuator>) -> impl std::ops::RangeBounds<f64> {
+    pub fn actuator_actrange(&self, id: ObjectId<obj::Actuator>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.actuator_actrange(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// scale length and transmitted force
     pub fn actuator_gear(&self, id: ObjectId<obj::Actuator>) -> (f64, f64, f64, f64, f64, f64) {
@@ -1493,9 +1493,9 @@ impl Model {
         self.binding.actuator_length0()[id.index()]
     }
     /// feasible actuator length range
-    pub fn actuator_lengthrange(&self, id: ObjectId<obj::Actuator>) -> impl std::ops::RangeBounds<f64> {
+    pub fn actuator_lengthrange(&self, id: ObjectId<obj::Actuator>) -> std::ops::Range<f64> {
         let (it, offset) = (self.binding.actuator_lengthrange(), id.index() * 2);
-        it[offset]..=it[offset + 1]
+        it[offset]..it[offset + 1]
     }
     /// plugin instance id; None: not a plugin
     pub fn actuator_plugin(&self, id: ObjectId<obj::Actuator>) -> Option<ObjectId<obj::Plugin>> {

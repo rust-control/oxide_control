@@ -62,6 +62,21 @@ const _: (/* for ease with using `Environment::new(...)` */) = {
     }
 };
 
+
+impl<T, A> Environment<T, A>
+where
+    T: Task,
+    A: Action<Physics = T::Physics>,
+{
+    pub fn task(&self) -> &T {
+        &self.task
+    }
+
+    pub fn physics(&self) -> &T::Physics {
+        &self.physics
+    }
+}
+
 pub enum TimeStep<O> {
     Step {
         observation: O,
