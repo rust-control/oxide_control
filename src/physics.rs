@@ -9,7 +9,6 @@ pub use binding::{ObjectId, obj};
 
 use binding::{Obj, mjtObj};
 use crate::error::Error;
-use rustc_hash::FxHashMap;
 
 pub struct Physics {
     model: Model,
@@ -85,32 +84,19 @@ impl Physics {
 
 pub struct Actuators<'a> {
     physics: &'a mut Physics,
-    name_to_id: FxHashMap<&'static str, ObjectId<binding::obj::Actuator>>,
 }
 
 impl Physics {
     pub fn actuators(&mut self) -> Actuators<'_> {
         Actuators {
             physics: self,
-            name_to_id: FxHashMap::default(),
         }
     }
 }
 
 impl<'a> Actuators<'a> {
-    pub fn set(&mut self, name: &'static str, control: f64) -> Result<(), Error> {
-        let id = match self.name_to_id.get(name) {
-            Some(&id) => id,
-            None => {
-                let id = self.physics.object_id_of::<binding::obj::Actuator>(name).ok_or(Error::NameNotFound(name))?;
-                self.name_to_id.insert(name, id);
-                id
-            }
-        };
-
+    pub fn set(&mut self, id: ObjectId<obj::Actuator>, control: f64) {
         self.physics.set_ctrl(id, control);
-
-        Ok(())
     }
 }
 

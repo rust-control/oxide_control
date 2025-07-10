@@ -29,36 +29,38 @@ pub trait Observation {
 
 pub trait Action {
     type Physics: Physics;
-    fn apply(self, actuators: physics::Actuators<'_>);
+    fn apply(self, actuators: &mut physics::Actuators<'_>);
 }
 
-pub struct Environment<T, O, A>
+pub struct Environment<T, A>
 where
-    T: Task<Observation = O>,
-    O: Observation<Physics = T::Physics>,
+    T: Task,
     A: Action<Physics = T::Physics>,
 {
     task: T,
     physics: T::Physics,
-    _o: std::marker::PhantomData<O>,
     _a: std::marker::PhantomData<A>,
 }
 
-impl<T, O, A> Environment<T, O, A>
-where
-    T: Task<Observation = O>,
-    O: Observation<Physics = T::Physics>,
-    A: Action<Physics = T::Physics>,
-{
-    pub fn new(physics: T::Physics, task: T) -> Self {
-        Self {
-            task,
-            physics,
-            _o: std::marker::PhantomData,
-            _a: std::marker::PhantomData,
+const _: (/* for ease with using `Environment::new(...)` */) = {
+    pub struct DummyAction<P: Physics>(std::marker::PhantomData<P>);
+    impl<P: Physics> Action for DummyAction<P> {
+        type Physics = P;
+        fn apply(self, _actuators: &mut physics::Actuators<'_>) {
+            // No action to apply
         }
     }
-}
+    
+    impl<T: Task> Environment<T, DummyAction<T::Physics>> {
+        pub fn new<A: Action<Physics = T::Physics>>(physics: T::Physics, task: T) -> Environment<T, A> {
+            Environment {
+                task,
+                physics,
+                _a: std::marker::PhantomData,
+            }
+        }
+    }
+};
 
 pub enum TimeStep<O> {
     Step {
@@ -72,22 +74,21 @@ pub enum TimeStep<O> {
     },
 }
 
-impl<T, O, A> Environment<T, O, A>
+impl<T, A> Environment<T, A>
 where
-    T: Task<Observation = O>,
-    O: Observation<Physics = T::Physics>,
+    T: Task,
     A: Action<Physics = T::Physics>,
 {
-    pub fn reset(&mut self) -> O {
+    pub fn reset(&mut self) -> T::Observation {
         self.task.init_episode(&mut self.physics);
-        O::generate(&self.physics)
+        T::Observation::generate(&self.physics)
     }
 
-    pub fn step(&mut self, action: A) -> TimeStep<O> {
-        action.apply(self.physics.actuators());
+    pub fn step(&mut self, action: A) -> TimeStep<T::Observation> {
+        action.apply(&mut self.physics.actuators());
         self.physics.step();
 
-        let observation = O::generate(&self.physics);
+        let observation = T::Observation::generate(&self.physics);
         let reward = self.task.get_reward(&observation, &self.physics);
         
         if self.task.should_finish_episode(&observation, &self.physics) {

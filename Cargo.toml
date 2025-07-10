@@ -14,4 +14,3 @@ categories    = ["science::robotics", "simulation"]
 
 [dependencies]
 rusty_mujoco = { path = "../rusty_mujoco" }
-rustc-hash   = { version = "2.1.0" }
