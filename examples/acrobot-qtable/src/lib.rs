@@ -202,9 +202,11 @@ impl oxide_control::Task for BalanceTask {
         let good_n_pendulum_rad_max = best_n_pendulum_rad + (self.n_pendulum_digitization / 4);
         let n_pendulum_rad = state.n_pendulum_rad;
         if !(good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pendulum_rad) {
-            -0.5 * (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs()
+            (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs()
+        } else if (best_n_pendulum_rad - 1..=best_n_pendulum_rad + 1).contains(&n_pendulum_rad) {
+            2.0
         } else {
-            1.0 - (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - good_n_pendulum_rad_min) as f64
+            1.0 - (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - best_n_pendulum_rad) as f64
         }
     }
 }
@@ -233,8 +235,9 @@ pub struct AgentConfig {
 }
 impl Agent {
     fn make_digitized_actions(physics: &Acrobot, config: &AgentConfig) -> Vec<AcrobotAction> {
-        let actrange = physics.model().actuator_actrange(physics.actuator_id);
-        let digitized_torques = np::linspace(actrange.start, actrange.end, config.action_size);
+        let ctrlrange = physics.model().actuator_ctrlrange(physics.actuator_id);
+        assert_eq!(ctrlrange, -1.0..1.0, "The control range must be [-1.0, 1.0] for the Acrobot model.");
+        let digitized_torques = np::linspace(ctrlrange.start, ctrlrange.end, config.action_size);
         digitized_torques
             .into_iter()
             .enumerate()

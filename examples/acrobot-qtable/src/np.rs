@@ -2,7 +2,7 @@ pub fn linspace(start: f64, end: f64, n: usize) -> Vec<f64> {
     if n == 0 {
         return vec![];
     }
-    let step = (end - start) / (n as f64 - 1.0);
+    let step = (end - start) / (n - 1) as f64;
     (0..n).map(|i| start + i as f64 * step).collect()
 }
 
