@@ -18,6 +18,17 @@ impl Acrobot {
         let actuator_id = raw.object_id_of::<obj::Actuator>("shoulder").unwrap();
         Self { raw, elbow_id, shoulder_id, actuator_id }
     }
+
+    pub fn show_qpos(&self) {
+        let elbow_qpos = self.qpos::<joint::Hinge>(self.elbow_id).unwrap();
+        let shoulder_qpos = self.qpos::<joint::Hinge>(self.shoulder_id).unwrap();
+        println!("Elbow QPos: {:?}, Shoulder QPos: {:?}", elbow_qpos, shoulder_qpos);
+    }
+    pub fn show_qvel(&self) {
+        let elbow_qvel = self.qvel::<joint::Hinge>(self.elbow_id).unwrap();
+        let shoulder_qvel = self.qvel::<joint::Hinge>(self.shoulder_id).unwrap();
+        println!("Elbow QVel: {:?}, Shoulder QVel: {:?}", elbow_qvel, shoulder_qvel);
+    }
 }
 impl std::ops::Deref for Acrobot {
     type Target = oxide_control::RawPhysics;
@@ -134,8 +145,8 @@ impl oxide_control::Task for BalanceTask {
     }
 
     fn init_episode(&self, physics: &mut Self::Physics) {
-        let elbow_qpos_range = if self.do_swing {-(PI/2.)..(PI/2.)} else {-(PI/10.)..(PI/10.)};
         let (elbow_id, shoulder_id) = (physics.elbow_id, physics.shoulder_id);
+        let elbow_qpos_range = if self.do_swing {-(PI/2.)..(PI/2.)} else {-(PI/10.)..(PI/10.)};
         physics.set_qpos::<joint::Hinge>(elbow_id, [rand::Rng::random_range(&mut rand::rng(), elbow_qpos_range)]).unwrap();
         physics.set_qpos::<joint::Hinge>(shoulder_id, [0.]).unwrap();
     }
@@ -161,16 +172,31 @@ impl oxide_control::Task for BalanceTask {
         let best_n_pendulum_rad = self.n_pendulum_digitization / 2;
         let good_n_pendulum_rad_min = best_n_pendulum_rad - (self.n_pendulum_digitization / 4);
         let good_n_pendulum_rad_max = best_n_pendulum_rad + (self.n_pendulum_digitization / 4);
-        let n_pendulum_rad = state.n_pendulum_rad;
-        if n_pendulum_rad == best_n_pendulum_rad {
+
+        let best_n_arm_rad = self.n_arm_digitization / 2;
+        let good_n_arm_rad_min = best_n_arm_rad - (self.n_arm_digitization / 4);
+        let good_n_arm_rad_max = best_n_arm_rad + (self.n_arm_digitization / 4);
+
+        let (n_pend_rad, n_arm_rad) = (state.n_pendulum_rad, state.n_arm_rad);
+        let pend_reward = if n_pend_rad == best_n_pendulum_rad {
             2.0
-        } else if (best_n_pendulum_rad - 1..=best_n_pendulum_rad + 1).contains(&n_pendulum_rad) {
+        } else if (best_n_pendulum_rad - 1..=best_n_pendulum_rad + 1).contains(&n_pend_rad) {
             1.5
-        } else if (good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pendulum_rad) {
-            1.0 - (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - best_n_pendulum_rad) as f64
+        } else if (good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pend_rad) {
+            1.0 - (n_pend_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - best_n_pendulum_rad) as f64
         } else {
-            - (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs() / (self.n_pendulum_digitization as f64) * 1.25
-        }
+            - (n_pend_rad as f64 - best_n_pendulum_rad as f64).abs() / (self.n_pendulum_digitization as f64) * 2.0
+        };
+        let arm_reward = if n_arm_rad == best_n_arm_rad {
+            2.0
+        } else if (best_n_arm_rad - 1..=best_n_arm_rad + 1).contains(&n_arm_rad) {
+            1.5
+        } else if (good_n_arm_rad_min..=good_n_arm_rad_max).contains(&n_arm_rad) {
+            1.0 - (n_arm_rad as f64 - best_n_arm_rad as f64).abs() / (good_n_arm_rad_max - best_n_arm_rad) as f64
+        } else {
+            - (n_arm_rad as f64 - best_n_arm_rad as f64).abs() / (self.n_arm_digitization as f64) * 2.0
+        };
+        pend_reward + arm_reward
     }
 }
 
@@ -184,6 +210,8 @@ impl oxide_control::Action for AcrobotAction {
     type Physics = Acrobot;
     
     fn apply(self, actuators: &mut oxide_control::physics::Actuators<'_>) {
+        assert!(!self.torque.is_nan(), "Torque cannot be NaN");
+        assert!((-1.0..=1.0).contains(&self.torque), "Torque must be in the range [-1.0, 1.0]");
         actuators.set(self.actuator_id, self.torque);
     }
 }
