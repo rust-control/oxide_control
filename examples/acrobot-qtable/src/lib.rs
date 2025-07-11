@@ -109,7 +109,7 @@ impl BalanceTask {
             n_pendulum_rad +
             n_pendulum_vel * d_pendulum +
             n_arm_vel * d_pendulum.pow(2) +
-            n_arm_rad * d_pendulum.pow(2) * (d_arm);
+            n_arm_rad * d_pendulum.pow(2) * d_arm;
 
         AcrobotState {
             arm_rad,
@@ -282,4 +282,3 @@ impl Agent {
         self.qtable.save(file_path)
     }
 }
-

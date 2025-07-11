@@ -78,7 +78,7 @@ fn main() {
         }
 
         if episode > 0 && episode % model_log_interval == 0 {
-            println!("[episode {episode}]: Total Reward: {:.2}, Time: {:.2?}", episode_reward, start_time.elapsed());
+            println!("[episode {episode}]: total reward: {:.2}, time: {:.2?}", episode_reward, start_time.elapsed());
             agent
                 .save_qtable(model_log_directory.join(format!("qtable_{episode}.json")))
                 .expect("Failed to save Q-table");
