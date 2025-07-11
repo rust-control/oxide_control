@@ -216,6 +216,7 @@ pub struct Agent {
 }
 pub struct AgentConfig {
     pub action_size: usize,
+    pub state_size: usize,
 }
 impl Agent {
     fn make_digitized_actions(physics: &Acrobot, config: &AgentConfig) -> Vec<AcrobotAction> {
@@ -235,6 +236,7 @@ impl Agent {
     pub fn new(physics: &Acrobot, config: &AgentConfig) -> Self {
         let qtable = QTable::new_with(QConfig {
             action_size: config.action_size,
+            state_size: config.state_size,
             ..Default::default()
         });
         let digitized_actions = Self::make_digitized_actions(physics, config);
@@ -248,6 +250,7 @@ impl Agent {
     ) -> Result<Self, std::io::Error> {
         let qtable = QTable::load_with(qtable_filename, QConfig {
             action_size: config.action_size,
+            state_size: config.state_size,
             ..Default::default()
         })?;
         let digitized_actions = Self::make_digitized_actions(physics, config);
