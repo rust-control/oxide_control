@@ -1,7 +1,6 @@
 use acrobot_qtable::*;
 use qtable::strategy;
 use oxide_control::TimeStep;
-use std::f64::consts::PI;
 
 fn main() {
     macro_rules! env_config {
@@ -35,25 +34,23 @@ fn main() {
 
     let mut env = oxide_control::Environment::new::<AcrobotAction>(
         Acrobot::new(),
-        BalanceTask {
+        AcrobotBalanceTask {
             do_swing: false,
             discount: 0.99,
             n_arm_digitization,
             n_pendulum_digitization,
-            arm_limit: (-0.9*PI)..(0.9*PI),
-            pendulum_limit: (-0.2*PI)..(0.2*PI),
         },
     );
 
     let mut agent = {
-        let config = AgentConfig {
+        let config = QTableAgentConfig {
             action_size: 15,
             state_size: (n_arm_digitization.pow(2) * n_pendulum_digitization.pow(2)),
         };
         match model_restore_file {
-            None => Agent::new(&env.physics(), &config),
-            Some(path) => Agent::new_with_resotoring_qtable(&path, &env.physics(), &config)
-                .expect("Failed to resotore agent from Q-table file {path}"),
+            None => QTableAgent::new(&config, &env),
+            Some(path) => QTableAgent::load(&path)
+                .expect(&format!("Failed to resotore agent from Q-table file `{}`", path.display())),
         }
     };
 
@@ -88,7 +85,7 @@ fn main() {
             let state = env.task().state(&obs);
             let action = agent.get_action::<strategy::EpsilonGreedy>(state);
             match env.step(action) {
-                TimeStep::Step { observation, reward, discount: _ } => {
+                TimeStep::Step { observation, reward, discount:_ } => {
                     let next_state = env.task().state(&observation);
                     agent.learn(state, action, reward, next_state);
                     episode_reward += reward;
@@ -107,7 +104,7 @@ fn main() {
         if episode > 0 && episode % model_log_interval == 0 {
             println!("[episode {episode}]: return: {:.2}, time: {:?}", episode_reward, start_time.elapsed());
             agent
-                .save_qtable(model_log_directory.join(format!("qtable_{episode}.json")))
+                .save(model_log_directory.join(format!("qtable_{episode}.json")))
                 .expect("Failed to save Q-table");
         }
     }

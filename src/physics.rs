@@ -5,7 +5,7 @@ use data::Data;
 use model::Model;
 
 pub use rusty_mujoco as binding;
-pub use binding::{ObjectId, obj};
+pub use binding::{ObjectId, obj, mjMAXVAL, mjMINVAL};
 
 use binding::{Obj, mjtObj};
 use crate::error::Error;
