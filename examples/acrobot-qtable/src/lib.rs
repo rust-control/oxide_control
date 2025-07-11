@@ -158,55 +158,18 @@ impl oxide_control::Task for BalanceTask {
             return -10.0; // Penalty for finishing the episode
         }
         
-        /*
-        let best_n_pendulum_rad = (self.n_pendulum_digitization - 1) / 2;
-        let good_n_pendulum_rad_min = best_n_pendulum_rad - (self.n_pendulum_digitization / 4);
-        let good_n_pendulum_rad_max = best_n_pendulum_rad + (self.n_pendulum_digitization / 4);
-
-        let n_pendulum_rad = state.n_pendulum_rad;
-        //                     |---------------|------------------|------------------|--------------------|
-        // n_pendulum_rad:     0            good_min             best             good_max        n_pendulum_digitization
-        // reward:         {negative}         0.0                1.0                0.0               {negative}
-        // 
-        // 
-        // 1. We'll provide a reward of `y = - ax^2 + bx + c` form for the `n_pendulum_rad`.
-        // 2. The rewrard must equal to 1.0 at `best_n_pendulum_rad`.
-        // 3. The reward must be positive between `good_n_pendulum_rad_min` and `good_n_pendulum_rad_max`.
-        // 4. The reward must be `0.0` at `good_n_pendulum_rad_min` and `good_n_pendulum_rad_max`.
-        // 5. The reward must be negative in the rest of the range.
-        // 
-        // We can set up a system of equations to find the coefficients `a`, `b`, and `c`:
-        // 
-        //     let gn = good_n_pendulum_rad_min in
-        //     let gx = good_n_pendulum_rad_max in
-        //     let best = best_n_pendulum_rad in
-        //     and(
-        //         0 = -a*gn**2 + b*gn + c,
-        //         1 = -a*best**2 + b*best + c,
-        //         0 = -a*gx**2 + b*gx + c
-        //     )
-        // 
-        // Solving this system of equations gives us:
-        let (gn, gx, best) = (good_n_pendulum_rad_min as f64, good_n_pendulum_rad_max as f64, best_n_pendulum_rad as f64);
-        let a = 1.0 / (best.powi(2) - gn * gx);
-        let b = a * (gn + gx);
-        let c = -a * gn * gx;
-        // So, the reward is:
-        let x = n_pendulum_rad as f64;
-        -a * x.powi(2) + b * x + c
-        */
-
-        // A simpler reward function:
         let best_n_pendulum_rad = self.n_pendulum_digitization / 2;
         let good_n_pendulum_rad_min = best_n_pendulum_rad - (self.n_pendulum_digitization / 4);
         let good_n_pendulum_rad_max = best_n_pendulum_rad + (self.n_pendulum_digitization / 4);
         let n_pendulum_rad = state.n_pendulum_rad;
-        if !(good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pendulum_rad) {
-            (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs()
-        } else if (best_n_pendulum_rad - 1..=best_n_pendulum_rad + 1).contains(&n_pendulum_rad) {
+        if n_pendulum_rad == best_n_pendulum_rad {
             2.0
-        } else {
+        } else if (best_n_pendulum_rad - 1..=best_n_pendulum_rad + 1).contains(&n_pendulum_rad) {
+            1.5
+        } else if (good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pendulum_rad) {
             1.0 - (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - best_n_pendulum_rad) as f64
+        } else {
+            - (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs() / (self.n_pendulum_digitization as f64) * 1.25
         }
     }
 }
