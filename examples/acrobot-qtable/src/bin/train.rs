@@ -20,8 +20,8 @@ fn main() {
         };
     }
     env_config! {
-        n_arm_digitization: usize = @"N_ARM_DIGITIZATION" || 5;
-        n_pendulum_digitization: usize = @"N_PENDULUM_DIGITIZATION" || 5;
+        n_arm_digitization: usize = @"N_ARM_DIGITIZATION" || 7;
+        n_pendulum_digitization: usize = @"N_PENDULUM_DIGITIZATION" || 8;
         max_episodes: usize = @"MAX_EPISODES" || 1000000;
         episode_length: usize = @"EPISODE_LENGTH" || 10000;
         model_log_interval: usize = @"MODEL_LOG_INTERVAL" || 2000;
@@ -47,7 +47,7 @@ fn main() {
 
     let mut agent = {
         let config = AgentConfig {
-            action_size: 5,
+            action_size: 7,
             state_size: (n_arm_digitization.pow(2) * n_pendulum_digitization.pow(2)),
         };
         match model_restore_file {

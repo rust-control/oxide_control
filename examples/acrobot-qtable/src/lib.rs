@@ -142,10 +142,10 @@ impl oxide_control::Task for BalanceTask {
 
     fn should_finish_episode(&self, observation: &Self::Observation, _: &Self::Physics) -> bool {
         let state = self.state(observation);
-        if !(0..=self.n_arm_digitization).contains(&state.n_arm_rad) {
+        if state.n_arm_rad <= 0 || self.n_arm_digitization <= state.n_arm_rad {
             return true; // Arm is out of bounds
         }
-        if !(0..=self.n_pendulum_digitization).contains(&state.n_pendulum_rad) {
+        if state.n_pendulum_rad <= 0 || self.n_pendulum_digitization <= state.n_pendulum_rad {
             return true; // Pendulum is out of bounds
         }
         false
@@ -158,6 +158,7 @@ impl oxide_control::Task for BalanceTask {
             return -10.0; // Penalty for finishing the episode
         }
         
+        /*
         let best_n_pendulum_rad = (self.n_pendulum_digitization - 1) / 2;
         let good_n_pendulum_rad_min = best_n_pendulum_rad - (self.n_pendulum_digitization / 4);
         let good_n_pendulum_rad_max = best_n_pendulum_rad + (self.n_pendulum_digitization / 4);
@@ -193,6 +194,18 @@ impl oxide_control::Task for BalanceTask {
         // So, the reward is:
         let x = n_pendulum_rad as f64;
         -a * x.powi(2) + b * x + c
+        */
+
+        // A simpler reward function:
+        let best_n_pendulum_rad = self.n_pendulum_digitization / 2;
+        let good_n_pendulum_rad_min = best_n_pendulum_rad - (self.n_pendulum_digitization / 4);
+        let good_n_pendulum_rad_max = best_n_pendulum_rad + (self.n_pendulum_digitization / 4);
+        let n_pendulum_rad = state.n_pendulum_rad;
+        if !(good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pendulum_rad) {
+            -0.5 * (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs()
+        } else {
+            1.0 - (n_pendulum_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - good_n_pendulum_rad_min) as f64
+        }
     }
 }
 
