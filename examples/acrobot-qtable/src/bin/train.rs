@@ -100,8 +100,8 @@ fn main() {
                     break; // End the episode
                 }
             }
-            // env.physics().show_qpos();
-            // env.physics().show_qvel();
+            env.physics().debug_qpos();
+            env.physics().debug_qvel();
         }
 
         if episode > 0 && episode % model_log_interval == 0 {

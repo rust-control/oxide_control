@@ -19,15 +19,25 @@ impl Acrobot {
         Self { raw, elbow_id, shoulder_id, actuator_id }
     }
 
-    pub fn show_qpos(&self) {
-        let elbow_qpos = self.qpos::<joint::Hinge>(self.elbow_id).unwrap();
-        let shoulder_qpos = self.qpos::<joint::Hinge>(self.shoulder_id).unwrap();
-        println!("Elbow QPos: {:?}, Shoulder QPos: {:?}", elbow_qpos, shoulder_qpos);
+    pub fn debug_qpos(&self) {
+        let [elbow_qpos] = self.qpos::<joint::Hinge>(self.elbow_id).unwrap();
+        let [shoulder_qpos] = self.qpos::<joint::Hinge>(self.shoulder_id).unwrap();
+        if elbow_qpos.is_nan() || shoulder_qpos.is_nan()
+        || elbow_qpos.is_infinite() || shoulder_qpos.is_infinite()
+        || elbow_qpos.abs() > PI || shoulder_qpos.abs() > PI
+        {
+            println!("[debug] Elbow QPos: {:?}, Shoulder QPos: {:?}", elbow_qpos, shoulder_qpos);
+        }   
     }
-    pub fn show_qvel(&self) {
-        let elbow_qvel = self.qvel::<joint::Hinge>(self.elbow_id).unwrap();
-        let shoulder_qvel = self.qvel::<joint::Hinge>(self.shoulder_id).unwrap();
-        println!("Elbow QVel: {:?}, Shoulder QVel: {:?}", elbow_qvel, shoulder_qvel);
+    pub fn debug_qvel(&self) {
+        let [elbow_qvel] = self.qvel::<joint::Hinge>(self.elbow_id).unwrap();
+        let [shoulder_qvel] = self.qvel::<joint::Hinge>(self.shoulder_id).unwrap();
+        if elbow_qvel.is_nan() || shoulder_qvel.is_nan()
+        || elbow_qvel.is_infinite() || shoulder_qvel.is_infinite()
+        || elbow_qvel.abs() > 8.0 || shoulder_qvel.abs() > 8.0
+        {
+            println!("[debug] Elbow QVel: {:?}, Shoulder QVel: {:?}", elbow_qvel, shoulder_qvel);
+        }
     }
 }
 impl std::ops::Deref for Acrobot {
