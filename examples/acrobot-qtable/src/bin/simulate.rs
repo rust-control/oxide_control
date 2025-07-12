@@ -24,19 +24,19 @@ fn main() {
         },
     );
 
-    let mut cam = mjvCamera::default();
-    let opt = mjvOption::default();
-    let mut scn = mjvScene::default();
-    let mut con = mjrContext::default();
-    mjv_makeScene(&env.physics().model().binding, &mut scn, 2000);
-    mjr_makeContext(&env.physics().model().binding, &mut con, mjtFontScale::X150);
-
     let mut glfw = glfw::init(glfw::fail_on_errors).expect("Failed to initialize GLFW");
     let (mut window, events) = glfw.create_window(
         1200, 900, "Acrobot Simulation", glfw::WindowMode::Windowed
     ).expect("Failed to create GLFW window");
     window.set_size_polling(true);
     glfw::Context::make_current(&mut *window);
+
+    let mut cam = mjvCamera::default();
+    let opt = mjvOption::default();
+    let mut scn = mjvScene::default();
+    let mut con = mjrContext::default();
+    mjv_makeScene(&env.physics().model().binding, &mut scn, 2000);
+    mjr_makeContext(&env.physics().model().binding, &mut con, mjtFontScale::X150);
 
     let mut obs = env.reset();
     while !window.should_close() {

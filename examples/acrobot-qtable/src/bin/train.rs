@@ -26,7 +26,7 @@ fn main() {
         model_log_interval: usize = @"MODEL_LOG_INTERVAL" || 2000;
         model_restore_file: std::path::PathBuf = @"MODEL_RESTORE_FILE";
         model_log_directory: std::path::PathBuf = @"MODEL_LOG_DIRECTORY" || std::env::current_dir().unwrap()
-            .join("logs")
+            .join("models")
             .join(chrono::Local::now().format("%m-%d-%H-%M-%S").to_string());
     }
 
@@ -97,8 +97,6 @@ fn main() {
                     break; // End the episode
                 }
             }
-            env.physics().debug_qpos();
-            env.physics().debug_qvel();
         }
 
         if episode > 0 && episode % model_log_interval == 0 {

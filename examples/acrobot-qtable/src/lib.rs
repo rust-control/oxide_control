@@ -19,35 +19,6 @@ impl Acrobot {
         let actuator_id = raw.object_id_of::<obj::Actuator>("shoulder").unwrap();
         Self { raw, elbow_id, shoulder_id, actuator_id }
     }
-
-    pub fn debug_qpos(&self) {
-        let [elbow_qpos] = self.qpos::<joint::Hinge>(self.elbow_id).unwrap();
-        let [shoulder_qpos] = self.qpos::<joint::Hinge>(self.shoulder_id).unwrap();
-        if elbow_qpos.is_nan() || shoulder_qpos.is_nan()
-        || elbow_qpos.is_infinite() || shoulder_qpos.is_infinite()
-        || elbow_qpos.abs() > 1000.0 || shoulder_qpos.abs() > 1000.0
-        {
-            use std::io::Write;
-            writeln!(
-                std::fs::OpenOptions::new().create(true).append(true).open("debug.log").unwrap(),
-                "[debug] Elbow QPOS: {elbow_qpos:?}, Shoulder QPOS: {shoulder_qpos:?}"
-            ).unwrap();
-        }   
-    }
-    pub fn debug_qvel(&self) {
-        let [elbow_qvel] = self.qvel::<joint::Hinge>(self.elbow_id).unwrap();
-        let [shoulder_qvel] = self.qvel::<joint::Hinge>(self.shoulder_id).unwrap();
-        if elbow_qvel.is_nan() || shoulder_qvel.is_nan()
-        || elbow_qvel.is_infinite() || shoulder_qvel.is_infinite()
-        || elbow_qvel.abs() > 1000.0 || shoulder_qvel.abs() > 1000.0
-        {
-            use std::io::Write;
-            writeln!(
-                std::fs::OpenOptions::new().create(true).append(true).open("debug.log").unwrap(),
-                "[debug] elbow QVEL: {elbow_qvel:?}, Shoulder QVEL: {shoulder_qvel:?}"
-            ).unwrap();
-        }
-    }
 }
 impl std::ops::Deref for Acrobot {
     type Target = oxide_control::RawPhysics;
@@ -202,7 +173,7 @@ impl oxide_control::Task for AcrobotBalanceTask {
         } else if (good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pend_rad) {
             1.0 - (n_pend_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - best_n_pendulum_rad) as f64
         } else {
-            - (n_pend_rad as f64 - best_n_pendulum_rad as f64).abs() / (self.n_pendulum_digitization as f64) * 2.0
+            - 2.0 * (n_pend_rad as f64 - best_n_pendulum_rad as f64).abs() / (self.n_pendulum_digitization as f64)
         };
         let arm_reward = if n_arm_rad == best_n_arm_rad {
             2.0
@@ -211,9 +182,9 @@ impl oxide_control::Task for AcrobotBalanceTask {
         } else if (good_n_arm_rad_min..=good_n_arm_rad_max).contains(&n_arm_rad) {
             1.0 - (n_arm_rad as f64 - best_n_arm_rad as f64).abs() / (good_n_arm_rad_max - best_n_arm_rad) as f64
         } else {
-            - (n_arm_rad as f64 - best_n_arm_rad as f64).abs() / (self.n_arm_digitization as f64) * 2.0
+            - 2.0 * (n_arm_rad as f64 - best_n_arm_rad as f64).abs() / (self.n_arm_digitization as f64)
         };
-        pend_reward + arm_reward
+        pend_reward * 2.0 + arm_reward
     }
 }
 
