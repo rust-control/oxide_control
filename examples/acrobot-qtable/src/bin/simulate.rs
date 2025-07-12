@@ -67,11 +67,7 @@ fn main() {
             mjtCatBit::ALL,
             &mut scn,
         );
-        mjr_render(
-            viewport,
-            &mut scn,
-            &con,
-        );
+        mjr_render(viewport, &mut scn, &con);
         glfw::Context::swap_buffers(&mut *window);
             
         glfw.poll_events();
