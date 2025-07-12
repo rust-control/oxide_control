@@ -1,6 +1,6 @@
 use acrobot_qtable::*;
-use qtable::strategy;
-use oxide_control::TimeStep;
+// use qtable::strategy;
+// use oxide_control::TimeStep;
 use oxide_control::physics::binding::{
     mjr_render, mjr_makeContext, mjrContext, mjrRect,
     mjv_updateScene, mjv_makeScene, mjvCamera, mjvOption, mjvScene,
@@ -8,21 +8,27 @@ use oxide_control::physics::binding::{
 };
 
 fn main() {
-    let mut args = std::env::args().skip(1);
-    let target_qtable_path = args.next().expect("Usage: simulate <target_qtable_path>");
-
-    let t = TrainedAgent::load(&target_qtable_path)
-        .expect(&format!("Failed to load trained agent from file `{target_qtable_path}`"));
-
-    let mut env = oxide_control::Environment::new::<AcrobotAction>(
-        Acrobot::new(),
-        AcrobotBalanceTask {
-            do_swing: false,
-            discount: 0.99,
-            n_arm_digitization: t.n_arm_digitization(),
-            n_pendulum_digitization: t.n_pendulum_digitization(),
-        },
-    );
+//    let mut args = std::env::args().skip(1);
+//    let target_qtable_path = args.next().expect("Usage: simulate <target_qtable_path>");
+//
+//    let t = TrainedAgent::load(&target_qtable_path)
+//        .expect(&format!("Failed to load trained agent from file `{target_qtable_path}`"));
+//
+//    let mut env = oxide_control::Environment::new::<AcrobotAction>(
+//        Acrobot::new(),
+//        AcrobotBalanceTask {
+//            do_swing: false,
+//            discount: 0.99,
+//            n_arm_digitization: t.n_arm_digitization(),
+//            n_pendulum_digitization: t.n_pendulum_digitization(),
+//        },
+//    );
+    let mut physics = Acrobot::new();
+        use oxide_control::physics::joint;
+        use std::f64::consts::PI;
+        let (elbow_id, shoulder_id) = (physics.elbow_id(), physics.shoulder_id());
+        physics.set_qpos::<joint::Hinge>(elbow_id, [rand::Rng::random_range(&mut rand::rng(), -(PI/10.)..(PI/10.))]).unwrap();
+        physics.set_qpos::<joint::Hinge>(shoulder_id, [0.]).unwrap();
 
     let mut glfw = glfw::init(glfw::fail_on_errors).expect("Failed to initialize GLFW");
     let (mut window, events) = glfw.create_window(
@@ -31,25 +37,30 @@ fn main() {
     window.set_size_polling(true);
     glfw::Context::make_current(&mut *window);
 
-    let mut cam = mjvCamera::default();
     let opt = mjvOption::default();
+    let mut cam = mjvCamera::default(); cam.set_fixedcamid(unsafe { oxide_control::physics::ObjectId::new_unchecked(0) });
     let mut scn = mjvScene::default();
     let mut con = mjrContext::default();
-    mjv_makeScene(&env.physics().model().binding, &mut scn, 2000);
-    mjr_makeContext(&env.physics().model().binding, &mut con, mjtFontScale::X150);
+    // mjv_makeScene(&env.physics().model().binding, &mut scn, 2000);
+    // mjr_makeContext(&env.physics().model().binding, &mut con, mjtFontScale::X150);
+    mjv_makeScene(&physics.model().binding, &mut scn, 2000);
+    mjr_makeContext(&physics.model().binding, &mut con, mjtFontScale::X150);
 
-    let mut obs = env.reset();
+    // let mut obs = env.reset();
     while !window.should_close() {
-        while env.physics().time() < glfw.get_time() {            
-            match env.step(t.get_action::<strategy::MostQValue>(env.task().state(&obs))) {
-                TimeStep::Step { observation, .. } => {
-                    obs = observation;
-                }
-                TimeStep::Finish { observation, .. } => {
-                    obs = observation;
-                    /* Not `window.set_should_close(true);` to keep rendering */
-                }
-            }
+        // while env.physics().time() < glfw.get_time() {            
+        //     match env.step(t.get_action::<strategy::MostQValue>(env.task().state(&obs))) {
+        //         TimeStep::Step { observation, .. } => {
+        //             obs = observation;
+        //         }
+        //         TimeStep::Finish { observation, .. } => {
+        //             obs = observation;
+        //             /* Not `window.set_should_close(true);` to keep rendering */
+        //         }
+        //     }
+        // }
+        while physics.time() < glfw.get_time() {
+            physics.step();
         }
 
         let mut viewport = mjrRect::new(0, 0, 0, 0);
@@ -57,12 +68,12 @@ fn main() {
         viewport.set_width(width);
         viewport.set_height(height);
 
-        let (model, data) = env.physics_mut().model_datamut();
+        let (model, data) = physics.model_datamut();// env.physics_mut().model_datamut();
         mjv_updateScene(
             &model.binding,
             &mut data.binding,
             &opt,
-            None, // No perturbation
+            None, /* No perturbation */
             &mut cam,
             mjtCatBit::ALL,
             &mut scn,

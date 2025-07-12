@@ -19,6 +19,16 @@ impl Acrobot {
         let actuator_id = raw.object_id_of::<obj::Actuator>("shoulder").unwrap();
         Self { raw, elbow_id, shoulder_id, actuator_id }
     }
+
+    pub fn elbow_id(&self) -> ObjectId<obj::Joint> {
+        self.elbow_id
+    }
+    pub fn shoulder_id(&self) -> ObjectId<obj::Joint> {
+        self.shoulder_id
+    }
+    pub fn actuator_id(&self) -> ObjectId<obj::Actuator> {
+        self.actuator_id
+    }
 }
 impl std::ops::Deref for Acrobot {
     type Target = oxide_control::RawPhysics;
@@ -66,7 +76,7 @@ impl oxide_control::Observation for AcrobotObservation {
             elbow_orientation: Orientation::from_rad(elbow_rad),
             shoulder_orientation: Orientation::from_rad(shoulder_rad),
             elbow_velocity,
-            shoulder_velocity,            
+            shoulder_velocity,    
         }
     }
 }
