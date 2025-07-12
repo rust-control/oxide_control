@@ -47,6 +47,13 @@ impl Physics {
         &mut self.data
     }
 
+    pub fn model_data(&self) -> (&Model, &Data) {
+        (&self.model, &self.data)
+    }
+    pub fn model_datamut(&mut self) -> (&Model, &mut Data) {
+        (&self.model, &mut self.data)
+    }
+
     pub fn step(&mut self) {
         rusty_mujoco::mj_step(&self.model.binding, &mut self.data.binding);
     }

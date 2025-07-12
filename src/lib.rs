@@ -75,6 +75,9 @@ where
     pub fn physics(&self) -> &T::Physics {
         &self.physics
     }
+    pub fn physics_mut(&mut self) -> &mut T::Physics {
+        &mut self.physics
+    }
 }
 
 pub enum TimeStep<O> {

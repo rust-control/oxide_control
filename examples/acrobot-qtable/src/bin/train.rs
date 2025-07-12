@@ -104,7 +104,7 @@ fn main() {
         if episode > 0 && episode % model_log_interval == 0 {
             println!("[episode {episode}]: return: {:.2}, time: {:?}", episode_reward, start_time.elapsed());
             agent
-                .save(model_log_directory.join(format!("qtable_{episode}.json")))
+                .save(model_log_directory.join(format!("agent@{episode}.json")))
                 .expect("Failed to save Q-table");
         }
     }
