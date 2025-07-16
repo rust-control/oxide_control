@@ -9,18 +9,21 @@ use oxide_control::physics::binding::{
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let target_qtable_path = args.next().expect("Usage: simulate <target_qtable_path>");
+    let target_agent_path = args.next().expect("Usage: simulate <target_agent_path>");
 
-    let t = TrainedAgent::load(&target_qtable_path)
-        .expect(&format!("Failed to load trained agent from file `{target_qtable_path}`"));
+    println!("Loading trained agent from `{target_agent_path}`...");
+
+    let t = TrainedAgent::load(&target_agent_path)
+        .expect(&format!("Failed to load trained agent from file `{target_agent_path}`"));
+
+    println!("Starting simulation with the agent...");
 
     let mut env = oxide_control::Environment::new::<AcrobotAction>(
         Acrobot::new(),
         AcrobotBalanceTask {
-            do_swing: false,
-            discount: 0.99,
             n_arm_digitization: t.n_arm_digitization(),
             n_pendulum_digitization: t.n_pendulum_digitization(),
+            get_reward: |_, _, _| 0.0 /* No reward function needed for simulation */,
         },
     );
 
@@ -47,17 +50,17 @@ fn main() {
                 }
                 TimeStep::Finish { .. } => {
                     window.set_title("Acrobot Simulation - FINISHED");
-                    std::thread::sleep(std::time::Duration::from_secs(4));
+                    std::thread::sleep(std::time::Duration::from_secs(3));
                     window.set_should_close(true);
                     break;
                 }
             }
         }
 
-        let mut viewport = mjrRect::new(0, 0, 0, 0);
-        let (width, height) = window.get_framebuffer_size();
-        viewport.set_width(width);
-        viewport.set_height(height);
+        let viewport = {
+            let (width, height) = window.get_framebuffer_size();
+            mjrRect::new(0, 0, width as u32, height as u32)
+        };
 
         let (model, data) = env.physics_mut().model_datamut();
         mjv_updateScene(

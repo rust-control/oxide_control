@@ -1,5 +1,4 @@
 mod np;
-mod render;
 
 use ::qtable::{QTable, QConfig, QUpdate};
 use ::oxide_control::physics::{ObjectId, obj, joint};
@@ -82,10 +81,9 @@ impl oxide_control::Observation for AcrobotObservation {
 }
 
 pub struct AcrobotBalanceTask {
-    pub do_swing: bool,
-    pub discount: f64,
     pub n_arm_digitization: usize,
     pub n_pendulum_digitization: usize,
+    pub get_reward: fn(&AcrobotBalanceTask, observation: &AcrobotObservation, physics: &Acrobot) -> f64,
 }
 #[derive(Clone, Copy)]
 #[allow(unused)]
@@ -139,13 +137,12 @@ impl oxide_control::Task for AcrobotBalanceTask {
     type Observation = AcrobotObservation;
 
     fn discount(&self) -> f64 {
-        self.discount
+        0.99
     }
 
     fn init_episode(&self, physics: &mut Self::Physics) {
         let (elbow_id, shoulder_id) = (physics.elbow_id, physics.shoulder_id);
-        let elbow_qpos_range = if self.do_swing {-(PI/2.)..(PI/2.)} else {-(PI/10.)..(PI/10.)};
-        physics.set_qpos::<joint::Hinge>(elbow_id, [rand::Rng::random_range(&mut rand::rng(), elbow_qpos_range)]).unwrap();
+        physics.set_qpos::<joint::Hinge>(elbow_id, [rand::Rng::random_range(&mut rand::rng(), (-PI/10.)..(PI/10.))]).unwrap();
         physics.set_qpos::<joint::Hinge>(shoulder_id, [0.]).unwrap();
     }
 
@@ -161,40 +158,7 @@ impl oxide_control::Task for AcrobotBalanceTask {
     }
 
     fn get_reward(&self, observation: &Self::Observation, physics: &Self::Physics) -> f64 {
-        let state = self.state(observation);
-
-        if self.should_finish_episode(observation, physics) {
-            return -1000.0; // Penalty for finishing the episode
-        }
-        
-        let best_n_pendulum_rad = self.n_pendulum_digitization / 2;
-        let good_n_pendulum_rad_min = best_n_pendulum_rad - (self.n_pendulum_digitization / 4);
-        let good_n_pendulum_rad_max = best_n_pendulum_rad + (self.n_pendulum_digitization / 4);
-
-        let best_n_arm_rad = self.n_arm_digitization / 2;
-        let good_n_arm_rad_min = best_n_arm_rad - (self.n_arm_digitization / 4);
-        let good_n_arm_rad_max = best_n_arm_rad + (self.n_arm_digitization / 4);
-
-        let (n_pend_rad, n_arm_rad) = (state.n_pendulum_rad, state.n_arm_rad);
-        let pend_reward = if n_pend_rad == best_n_pendulum_rad {
-            2.0
-        } else if (best_n_pendulum_rad - 1..=best_n_pendulum_rad + 1).contains(&n_pend_rad) {
-            1.5
-        } else if (good_n_pendulum_rad_min..=good_n_pendulum_rad_max).contains(&n_pend_rad) {
-            1.0 - (n_pend_rad as f64 - best_n_pendulum_rad as f64).abs() / (good_n_pendulum_rad_max - best_n_pendulum_rad) as f64
-        } else {
-            - 2.0 * (n_pend_rad as f64 - best_n_pendulum_rad as f64).abs() / (self.n_pendulum_digitization as f64)
-        };
-        let arm_reward = if n_arm_rad == best_n_arm_rad {
-            2.0
-        } else if (best_n_arm_rad - 1..=best_n_arm_rad + 1).contains(&n_arm_rad) {
-            1.5
-        } else if (good_n_arm_rad_min..=good_n_arm_rad_max).contains(&n_arm_rad) {
-            1.0 - (n_arm_rad as f64 - best_n_arm_rad as f64).abs() / (good_n_arm_rad_max - best_n_arm_rad) as f64
-        } else {
-            - 2.0 * (n_arm_rad as f64 - best_n_arm_rad as f64).abs() / (self.n_arm_digitization as f64)
-        };
-        pend_reward * 2.0 + arm_reward
+        (self.get_reward)(self, observation, physics)
     }
 }
 
@@ -241,6 +205,8 @@ pub struct QTableAgent {
 pub struct QTableAgentConfig {
     pub action_size: usize,
     pub state_size: usize,
+    pub initial_alpha: f64,
+    pub initial_epsilon: f64,
 }
 impl QTableAgent {
     fn make_digitized_actions(acrobot: &Acrobot, config: &QTableAgentConfig) -> Vec<AcrobotAction> {
@@ -267,6 +233,8 @@ impl QTableAgent {
         let qtable = QTable::new_with(QConfig {
             action_size: config.action_size,
             state_size: config.state_size,
+            alpha: config.initial_alpha,
+            epsilon: config.initial_epsilon,
             ..Default::default()
         });
         let digitized_actions = Self::make_digitized_actions(env.physics(), config);
@@ -301,6 +269,12 @@ impl QTableAgent {
             next_state: qtable::State::new_on(&self.qtable, next_state.digitized_state).unwrap(),
         });
     }
+    pub fn decay_alpha_with_rate(&mut self, rate: f64) {
+        self.qtable.decay_alpha_with_rate(rate);
+    }
+    pub fn decay_epsilon_with_rate(&mut self, rate: f64) {
+        self.qtable.decay_epsilon_with_rate(rate);
+    }
 
     pub fn save(&self, file_path: impl AsRef<std::path::Path>) -> Result<(), std::io::Error> {
         serde_json::to_writer(std::fs::File::create(file_path)?, self)
@@ -311,7 +285,6 @@ impl QTableAgent {
         serde_json::from_reader::<_, QTableAgent>(std::fs::File::open(qtable_filename)?)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     }
-
 }
 
 pub struct TrainedAgent(QTableAgent);
