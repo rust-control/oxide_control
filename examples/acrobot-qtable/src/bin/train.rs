@@ -4,30 +4,29 @@ use qtable::strategy;
 
 /// AcrobotObservation をそのまま使えば連続的な物理量を扱えるが、
 /// 元の Python コードベースを尊重して離散的な AcrobotState を用いている
-fn get_reward(balance: &AcrobotBalanceTask, state: &AcrobotState, action: &AcrobotAction) -> f64 {
-    if balance.should_finish_episode(state) {
+fn get_reward(task: &AcrobotBalanceTask, state: &AcrobotState, action: &AcrobotAction) -> f64 {
+    if task.should_finish_episode(state) {
         return -2000.0; // Penalty for finishing the episode
     }
 
     let position_reward = {
         const MAX_REWARD: f64 = 10.0;
         let pendulum_pos_error =
-            (balance.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_rad as f64).powi(2);
-        let arm_pos_error =
-            (balance.n_arm_digitization as f64 / 2.0 - state.n_arm_rad as f64).powi(2);
+            (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_rad as f64).powi(2);
+        let arm_pos_error = (task.n_arm_digitization as f64 / 2.0 - state.n_arm_rad as f64).powi(2);
         MAX_REWARD - (0.2 * pendulum_pos_error + 0.1 * arm_pos_error)
     };
 
     let velocity_penalty = {
         let pendulum_vel_error =
-            (balance.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_vel as f64).powi(2);
+            (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_vel as f64).powi(2);
         let arm_vel_error =
-            (balance.n_pendulum_digitization as f64 / 2.0 - state.n_arm_vel as f64).powi(2);
+            (task.n_pendulum_digitization as f64 / 2.0 - state.n_arm_vel as f64).powi(2);
         0.1 * pendulum_vel_error + 0.1 * arm_vel_error
     };
 
     let action_cost =
-        { 0.02 * (balance.action_size as f64 / 2.0 - action.digitization_index as f64).abs() };
+        { 0.02 * (task.action_size as f64 / 2.0 - action.digitization_index as f64).abs() };
 
     position_reward - velocity_penalty - action_cost
 }

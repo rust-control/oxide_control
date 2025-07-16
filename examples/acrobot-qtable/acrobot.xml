@@ -1,4 +1,4 @@
-<mujoco model="acrobot">  
+<mujoco model="acrobot">
   <include file="./common/visual.xml"/>
   <include file="./common/skybox.xml"/>
   <include file="./common/materials.xml"/>
@@ -7,7 +7,7 @@
     <geom type="capsule" mass="1.0"/>
   </default>
 
-  <option timestep="0.01" integrator="RK4">
+  <option timestep="0.001" integrator="RK4">
     <flag constraint="enable" energy="enable"/>
   </option>
 
