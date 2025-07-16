@@ -1,8 +1,7 @@
 use acrobot_qtable::*;
 use oxide_control::TimeStep;
 use oxide_control::physics::binding::{
-    mjr_makeContext, mjr_render, mjrContext, mjrRect, mjtCatBit, mjtFontScale, mjv_makeScene,
-    mjv_updateScene, mjvCamera, mjvOption, mjvScene,
+    mjr_makeContext, mjr_render, mjrContext, mjrRect, mjtCatBit, mjtFontScale, mjv_makeScene, mjv_updateScene, mjvCamera, mjvOption, mjvScene,
 };
 use qtable::strategy;
 
@@ -12,9 +11,7 @@ fn main() {
 
     println!("Loading trained agent from `{target_agent_path}`...");
 
-    let t = TrainedAgent::load(&target_agent_path).expect(&format!(
-        "Failed to load trained agent from file `{target_agent_path}`"
-    ));
+    let t = TrainedAgent::load(&target_agent_path).expect(&format!("Failed to load trained agent from file `{target_agent_path}`"));
 
     println!("Starting simulation with the agent...");
 

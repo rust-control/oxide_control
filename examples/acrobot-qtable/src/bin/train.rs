@@ -11,22 +11,18 @@ fn get_reward(task: &AcrobotBalanceTask, state: &AcrobotState, action: &AcrobotA
 
     let position_reward = {
         const MAX_REWARD: f64 = 10.0;
-        let pendulum_pos_error =
-            (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_rad as f64).powi(2);
-        let arm_pos_error = (task.n_arm_digitization as f64 / 2.0 - state.n_arm_rad as f64).powi(2);
+        let pendulum_pos_error = (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_rad as f64).abs().floor().powi(2);
+        let arm_pos_error = (task.n_arm_digitization as f64 / 2.0 - state.n_arm_rad as f64).abs().floor().powi(2);
         MAX_REWARD - (0.2 * pendulum_pos_error + 0.1 * arm_pos_error)
     };
 
     let velocity_penalty = {
-        let pendulum_vel_error =
-            (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_vel as f64).powi(2);
-        let arm_vel_error =
-            (task.n_pendulum_digitization as f64 / 2.0 - state.n_arm_vel as f64).powi(2);
-        0.1 * pendulum_vel_error + 0.1 * arm_vel_error
+        let pendulum_vel_error = (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_vel as f64).abs().floor().powi(2);
+        let arm_vel_error = (task.n_pendulum_digitization as f64 / 2.0 - state.n_arm_vel as f64).abs().floor().powi(2);
+        0.001 * pendulum_vel_error + 0.002 * arm_vel_error
     };
 
-    let action_cost =
-        { 0.02 * (task.action_size as f64 / 2.0 - action.digitization_index as f64).abs() };
+    let action_cost = { 0.02 * (task.action_size as f64 / 2.0 - action.digitization_index as f64).abs().floor() };
 
     position_reward - velocity_penalty - action_cost
 }
@@ -76,15 +72,12 @@ fn main() {
         let config = QTableAgentConfig {
             action_size,
             state_size: (n_arm_digitization.pow(2) * n_pendulum_digitization.pow(2)),
-            initial_alpha: 0.5,
+            initial_alpha: 0.1,
             initial_epsilon: 0.5,
         };
         match model_restore_file {
             None => QTableAgent::new(&config, &env),
-            Some(path) => QTableAgent::load(&path).expect(&format!(
-                "Failed to resotore agent from Q-table file `{}`",
-                path.display()
-            )),
+            Some(path) => QTableAgent::load(&path).expect(&format!("Failed to resotore agent from Q-table file `{}`", path.display())),
         }
     };
 
@@ -106,10 +99,7 @@ fn main() {
                     agent.learn(state, action, reward, next_state);
                     obs = observation;
                 }
-                TimeStep::Finish {
-                    observation,
-                    reward,
-                } => {
+                TimeStep::Finish { observation, reward } => {
                     let next_state = env.task().state(&observation);
                     agent.learn(state, action, reward, next_state);
                     break; // End the episode
@@ -140,10 +130,7 @@ fn main() {
                     episode_reward += reward;
                     obs = observation;
                 }
-                TimeStep::Finish {
-                    observation,
-                    reward,
-                } => {
+                TimeStep::Finish { observation, reward } => {
                     let next_state = env.task().state(&observation);
                     agent.learn(state, action, reward, next_state);
                     break; // End the episode
@@ -152,11 +139,7 @@ fn main() {
         }
 
         if episode > 0 && episode % model_log_interval == 0 {
-            println!(
-                "[episode {episode}]: return: {:.2}, time: {:?}",
-                episode_reward,
-                start_time.elapsed()
-            );
+            println!("[episode {episode}]: return: {:.2}, time: {:?}", episode_reward, start_time.elapsed());
             agent
                 .save(model_log_directory.join(format!("agent-{episode}.json")))
                 .expect("Failed to save Q-table");

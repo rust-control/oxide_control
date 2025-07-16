@@ -111,27 +111,12 @@ impl AcrobotBalanceTask {
         let pendulum_rad = observation.elbow_orientation.to_rad();
         let pendulum_vel = observation.elbow_velocity;
 
-        let n_arm_rad = np::digitize(
-            arm_rad,
-            &np::linspace(-0.9 * PI, 0.9 * PI, d_arm + 1)[1..d_arm],
-        );
-        let n_arm_vel = np::digitize(
-            arm_vel.clamp(-8.0, 8.0),
-            &np::linspace(-8.0, 8.0, d_arm + 1)[1..d_arm],
-        );
-        let n_pendulum_rad = np::digitize(
-            pendulum_rad,
-            &np::linspace(-0.2 * PI, 0.2 * PI, d_pendulum + 1)[1..d_pendulum],
-        );
-        let n_pendulum_vel = np::digitize(
-            pendulum_vel.clamp(-8.0, 8.0),
-            &np::linspace(-8.0, 8.0, d_pendulum + 1)[1..d_pendulum],
-        );
+        let n_arm_rad = np::digitize(arm_rad, &np::linspace(-0.9 * PI, 0.9 * PI, d_arm + 1)[1..d_arm]);
+        let n_arm_vel = np::digitize(arm_vel.clamp(-8.0, 8.0), &np::linspace(-8.0, 8.0, d_arm + 1)[1..d_arm]);
+        let n_pendulum_rad = np::digitize(pendulum_rad, &np::linspace(-0.2 * PI, 0.2 * PI, d_pendulum + 1)[1..d_pendulum]);
+        let n_pendulum_vel = np::digitize(pendulum_vel.clamp(-8.0, 8.0), &np::linspace(-8.0, 8.0, d_pendulum + 1)[1..d_pendulum]);
 
-        let digitized_state = n_pendulum_rad
-            + n_pendulum_vel * d_pendulum
-            + n_arm_vel * d_pendulum.pow(2)
-            + n_arm_rad * d_pendulum.pow(2) * d_arm;
+        let digitized_state = n_pendulum_rad + n_pendulum_vel * d_pendulum + n_arm_vel * d_pendulum.pow(2) + n_arm_rad * d_pendulum.pow(2) * d_arm;
 
         AcrobotState {
             n_arm_rad,
@@ -164,13 +149,7 @@ impl oxide_control::Task for AcrobotBalanceTask {
     fn init_episode(&self, physics: &mut Self::Physics) {
         let (elbow_id, shoulder_id) = (physics.elbow_id, physics.shoulder_id);
         physics
-            .set_qpos::<joint::Hinge>(
-                elbow_id,
-                [rand::Rng::random_range(
-                    &mut rand::rng(),
-                    (-PI / 10.)..(PI / 10.),
-                )],
-            )
+            .set_qpos::<joint::Hinge>(elbow_id, [rand::Rng::random_range(&mut rand::rng(), (-PI / 10.)..(PI / 10.))])
             .unwrap();
         physics.set_qpos::<joint::Hinge>(shoulder_id, [0.]).unwrap();
     }
@@ -197,16 +176,11 @@ mod serde_actuator_id {
     use super::{ObjectId, obj};
     use serde::{Deserialize, Deserializer, Serializer};
 
-    pub fn serialize<S: Serializer>(
-        actuator_id: &ObjectId<obj::Actuator>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(actuator_id: &ObjectId<obj::Actuator>, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_u64(actuator_id.index() as u64)
     }
 
-    pub fn deserialize<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<ObjectId<obj::Actuator>, D::Error> {
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<ObjectId<obj::Actuator>, D::Error> {
         let index = u64::deserialize(deserializer)?;
         Ok(unsafe { ObjectId::<obj::Actuator>::new_unchecked(index as usize) })
     }
@@ -216,10 +190,7 @@ impl oxide_control::Action for AcrobotAction {
 
     fn apply(&self, actuators: &mut oxide_control::physics::Actuators<'_>) {
         assert!(!self.torque.is_nan(), "Torque cannot be NaN");
-        assert!(
-            (-1.0..=1.0).contains(&self.torque),
-            "Torque must be in the range [-1.0, 1.0]"
-        );
+        assert!((-1.0..=1.0).contains(&self.torque), "Torque must be in the range [-1.0, 1.0]");
         actuators.set(self.actuator_id, self.torque);
     }
 }
@@ -257,10 +228,7 @@ impl QTableAgent {
             .collect::<Vec<_>>()
     }
 
-    pub fn new(
-        config: &QTableAgentConfig,
-        env: &oxide_control::Environment<AcrobotBalanceTask>,
-    ) -> Self {
+    pub fn new(config: &QTableAgentConfig, env: &oxide_control::Environment<AcrobotBalanceTask>) -> Self {
         let qtable = QTable::new_with(QConfig {
             action_size: config.action_size,
             state_size: config.state_size,
@@ -283,13 +251,7 @@ impl QTableAgent {
         self.digitized_actions[qtable_action.index()]
     }
 
-    pub fn learn(
-        &mut self,
-        state: AcrobotState,
-        action: AcrobotAction,
-        reward: f64,
-        next_state: AcrobotState,
-    ) {
+    pub fn learn(&mut self, state: AcrobotState, action: AcrobotAction, reward: f64, next_state: AcrobotState) {
         self.qtable.update(QUpdate {
             state: qtable::State::new_on(&self.qtable, state.digitized_state).unwrap(),
             action: qtable::Action::new_on(&self.qtable, action.digitization_index).unwrap(),
@@ -305,13 +267,11 @@ impl QTableAgent {
     }
 
     pub fn save(&self, file_path: impl AsRef<std::path::Path>) -> Result<(), std::io::Error> {
-        serde_json::to_writer(std::fs::File::create(file_path)?, self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        serde_json::to_writer(std::fs::File::create(file_path)?, self).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         Ok(())
     }
     pub fn load(qtable_filename: impl AsRef<std::path::Path>) -> Result<Self, std::io::Error> {
-        serde_json::from_reader::<_, QTableAgent>(std::fs::File::open(qtable_filename)?)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        serde_json::from_reader::<_, QTableAgent>(std::fs::File::open(qtable_filename)?).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     }
 }
 

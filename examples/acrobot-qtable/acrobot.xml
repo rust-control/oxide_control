@@ -7,7 +7,7 @@
     <geom type="capsule" mass="1.0"/>
   </default>
 
-  <option timestep="0.001" integrator="RK4">
+  <option timestep="0.0001" integrator="RK4">
     <flag constraint="enable" energy="enable"/>
   </option>
 
