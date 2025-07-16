@@ -8,18 +8,11 @@ pub trait Physics: std::ops::DerefMut<Target = RawPhysics> {}
 pub trait Task {
     type Physics: Physics;
     type Observation: Observation<Physics = Self::Physics>;
+    type Action: Action<Physics = Self::Physics>;
     fn discount(&self) -> f64;
     fn init_episode(&self, physics: &mut Self::Physics);
-    fn should_finish_episode(
-        &self,
-        observation: &Self::Observation,
-        physics: &Self::Physics,
-    ) -> bool;
-    fn get_reward(
-        &self,
-        observation: &Self::Observation,
-        physics: &Self::Physics,
-    ) -> f64;
+    fn should_finish_episode(&self, observation: &Self::Observation) -> bool;
+    fn get_reward(&self, observation: &Self::Observation, action: &Self::Action) -> f64;
 }
 
 pub trait Observation {
@@ -29,45 +22,19 @@ pub trait Observation {
 
 pub trait Action {
     type Physics: Physics;
-    fn apply(self, actuators: &mut physics::Actuators<'_>);
+    fn apply(&self, actuators: &mut physics::Actuators<'_>);
 }
 
-pub struct Environment<T, A>
-where
-    T: Task,
-    A: Action<Physics = T::Physics>,
-{
+pub struct Environment<T: Task> {
     task: T,
     physics: T::Physics,
-    _a: std::marker::PhantomData<A>,
 }
 
-const _: (/* for ease with using `Environment::new(...)` */) = {
-    pub struct DummyAction<P: Physics>(std::marker::PhantomData<P>);
-    impl<P: Physics> Action for DummyAction<P> {
-        type Physics = P;
-        fn apply(self, _actuators: &mut physics::Actuators<'_>) {
-            // No action to apply
-        }
+impl<T: Task> Environment<T> {
+    pub fn new(physics: T::Physics, task: T) -> Self {
+        Self { task, physics }
     }
-    
-    impl<T: Task> Environment<T, DummyAction<T::Physics>> {
-        pub fn new<A: Action<Physics = T::Physics>>(physics: T::Physics, task: T) -> Environment<T, A> {
-            Environment {
-                task,
-                physics,
-                _a: std::marker::PhantomData,
-            }
-        }
-    }
-};
 
-
-impl<T, A> Environment<T, A>
-where
-    T: Task,
-    A: Action<Physics = T::Physics>,
-{
     pub fn task(&self) -> &T {
         &self.task
     }
@@ -92,24 +59,20 @@ pub enum TimeStep<O> {
     },
 }
 
-impl<T, A> Environment<T, A>
-where
-    T: Task,
-    A: Action<Physics = T::Physics>,
-{
+impl<T: Task> Environment<T> {
     pub fn reset(&mut self) -> T::Observation {
         self.task.init_episode(&mut self.physics);
         T::Observation::generate(&self.physics)
     }
 
-    pub fn step(&mut self, action: A) -> TimeStep<T::Observation> {
+    pub fn step(&mut self, action: T::Action) -> TimeStep<T::Observation> {
         action.apply(&mut self.physics.actuators());
         self.physics.step();
 
         let observation = T::Observation::generate(&self.physics);
-        let reward = self.task.get_reward(&observation, &self.physics);
-        
-        if self.task.should_finish_episode(&observation, &self.physics) {
+        let reward = self.task.get_reward(&observation, &action);
+
+        if self.task.should_finish_episode(&observation) {
             TimeStep::Finish {
                 observation,
                 reward,

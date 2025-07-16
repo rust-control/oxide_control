@@ -1,7 +1,7 @@
 mod np;
 
-use ::qtable::{QTable, QConfig, QUpdate};
-use ::oxide_control::physics::{ObjectId, obj, joint};
+use ::oxide_control::physics::{ObjectId, joint, obj};
+use ::qtable::{QConfig, QTable, QUpdate};
 use ::std::f64::consts::PI;
 
 pub struct Acrobot {
@@ -16,7 +16,12 @@ impl Acrobot {
         let elbow_id = raw.object_id_of::<obj::Joint>("elbow").unwrap();
         let shoulder_id = raw.object_id_of::<obj::Joint>("shoulder").unwrap();
         let actuator_id = raw.object_id_of::<obj::Actuator>("shoulder").unwrap();
-        Self { raw, elbow_id, shoulder_id, actuator_id }
+        Self {
+            raw,
+            elbow_id,
+            shoulder_id,
+            actuator_id,
+        }
     }
 
     pub fn elbow_id(&self) -> ObjectId<obj::Joint> {
@@ -49,7 +54,10 @@ pub struct Orientation {
 }
 impl Orientation {
     pub fn from_rad(rad: f64) -> Self {
-        Self { sin: rad.sin(), cos: rad.cos() }
+        Self {
+            sin: rad.sin(),
+            cos: rad.cos(),
+        }
     }
 
     pub fn to_rad(&self) -> f64 {
@@ -75,7 +83,7 @@ impl oxide_control::Observation for AcrobotObservation {
             elbow_orientation: Orientation::from_rad(elbow_rad),
             shoulder_orientation: Orientation::from_rad(shoulder_rad),
             elbow_velocity,
-            shoulder_velocity,    
+            shoulder_velocity,
         }
     }
 }
@@ -83,15 +91,11 @@ impl oxide_control::Observation for AcrobotObservation {
 pub struct AcrobotBalanceTask {
     pub n_arm_digitization: usize,
     pub n_pendulum_digitization: usize,
-    pub get_reward: fn(&AcrobotBalanceTask, observation: &AcrobotObservation, physics: &Acrobot) -> f64,
+    pub action_size: usize,
+    pub get_reward: fn(&AcrobotBalanceTask, state: &AcrobotState, action: &AcrobotAction) -> f64,
 }
 #[derive(Clone, Copy)]
-#[allow(unused)]
 pub struct AcrobotState {
-    pub arm_rad: f64,
-    pub pendulum_rad: f64,
-    pub arm_vel: f64,
-    pub pendulum_vel: f64,
     pub n_arm_rad: usize,
     pub n_pendulum_rad: usize,
     pub n_arm_vel: usize,
@@ -107,22 +111,29 @@ impl AcrobotBalanceTask {
         let pendulum_rad = observation.elbow_orientation.to_rad();
         let pendulum_vel = observation.elbow_velocity;
 
-        let n_arm_rad = np::digitize(arm_rad, &np::linspace(-0.9*PI, 0.9*PI, d_arm + 1)[1..d_arm]);
-        let n_arm_vel = np::digitize(arm_vel.clamp(-8.0, 8.0), &np::linspace(-8.0, 8.0, d_arm + 1)[1..d_arm]);
-        let n_pendulum_rad = np::digitize(pendulum_rad, &np::linspace(-0.2*PI, 0.2*PI, d_pendulum + 1)[1..d_pendulum]);
-        let n_pendulum_vel = np::digitize(pendulum_vel.clamp(-8.0, 8.0), &np::linspace(-8.0, 8.0, d_pendulum + 1)[1..d_pendulum]);
+        let n_arm_rad = np::digitize(
+            arm_rad,
+            &np::linspace(-0.9 * PI, 0.9 * PI, d_arm + 1)[1..d_arm],
+        );
+        let n_arm_vel = np::digitize(
+            arm_vel.clamp(-8.0, 8.0),
+            &np::linspace(-8.0, 8.0, d_arm + 1)[1..d_arm],
+        );
+        let n_pendulum_rad = np::digitize(
+            pendulum_rad,
+            &np::linspace(-0.2 * PI, 0.2 * PI, d_pendulum + 1)[1..d_pendulum],
+        );
+        let n_pendulum_vel = np::digitize(
+            pendulum_vel.clamp(-8.0, 8.0),
+            &np::linspace(-8.0, 8.0, d_pendulum + 1)[1..d_pendulum],
+        );
 
-        let digitized_state =
-            n_pendulum_rad +
-            n_pendulum_vel * d_pendulum +
-            n_arm_vel * d_pendulum.pow(2) +
-            n_arm_rad * d_pendulum.pow(2) * d_arm;
+        let digitized_state = n_pendulum_rad
+            + n_pendulum_vel * d_pendulum
+            + n_arm_vel * d_pendulum.pow(2)
+            + n_arm_rad * d_pendulum.pow(2) * d_arm;
 
         AcrobotState {
-            arm_rad,
-            pendulum_rad,
-            arm_vel,
-            pendulum_vel,
             n_arm_rad,
             n_pendulum_rad,
             n_arm_vel,
@@ -130,24 +141,8 @@ impl AcrobotBalanceTask {
             digitized_state,
         }
     }
-}
-impl oxide_control::Task for AcrobotBalanceTask {
-    type Physics = Acrobot;
-    
-    type Observation = AcrobotObservation;
 
-    fn discount(&self) -> f64 {
-        0.99
-    }
-
-    fn init_episode(&self, physics: &mut Self::Physics) {
-        let (elbow_id, shoulder_id) = (physics.elbow_id, physics.shoulder_id);
-        physics.set_qpos::<joint::Hinge>(elbow_id, [rand::Rng::random_range(&mut rand::rng(), (-PI/10.)..(PI/10.))]).unwrap();
-        physics.set_qpos::<joint::Hinge>(shoulder_id, [0.]).unwrap();
-    }
-
-    fn should_finish_episode(&self, observation: &Self::Observation, _: &Self::Physics) -> bool {
-        let state = self.state(observation);
+    pub fn should_finish_episode(&self, state: &AcrobotState) -> bool {
         if state.n_arm_rad <= 0 || self.n_arm_digitization <= state.n_arm_rad {
             return true; // Arm is out of bounds
         }
@@ -156,39 +151,75 @@ impl oxide_control::Task for AcrobotBalanceTask {
         }
         false
     }
+}
+impl oxide_control::Task for AcrobotBalanceTask {
+    type Physics = Acrobot;
+    type Observation = AcrobotObservation;
+    type Action = AcrobotAction;
 
-    fn get_reward(&self, observation: &Self::Observation, physics: &Self::Physics) -> f64 {
-        (self.get_reward)(self, observation, physics)
+    fn discount(&self) -> f64 {
+        0.99
+    }
+
+    fn init_episode(&self, physics: &mut Self::Physics) {
+        let (elbow_id, shoulder_id) = (physics.elbow_id, physics.shoulder_id);
+        physics
+            .set_qpos::<joint::Hinge>(
+                elbow_id,
+                [rand::Rng::random_range(
+                    &mut rand::rng(),
+                    (-PI / 10.)..(PI / 10.),
+                )],
+            )
+            .unwrap();
+        physics.set_qpos::<joint::Hinge>(shoulder_id, [0.]).unwrap();
+    }
+
+    fn should_finish_episode(&self, observation: &Self::Observation) -> bool {
+        let state = self.state(observation);
+        self.should_finish_episode(&state)
+    }
+
+    fn get_reward(&self, observation: &Self::Observation, action: &Self::Action) -> f64 {
+        let state = self.state(observation);
+        (self.get_reward)(self, &state, action)
     }
 }
 
-#[derive(Clone, Copy)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct AcrobotAction {
     #[serde(with = "serde_actuator_id")]
     actuator_id: ObjectId<obj::Actuator>,
-    digitization_index: usize,
     torque: f64,
+    pub digitization_index: usize,
 }
 mod serde_actuator_id {
     use super::{ObjectId, obj};
     use serde::{Deserialize, Deserializer, Serializer};
 
-    pub fn serialize<S: Serializer>(actuator_id: &ObjectId<obj::Actuator>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(
+        actuator_id: &ObjectId<obj::Actuator>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         serializer.serialize_u64(actuator_id.index() as u64)
     }
 
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<ObjectId<obj::Actuator>, D::Error> {
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<ObjectId<obj::Actuator>, D::Error> {
         let index = u64::deserialize(deserializer)?;
         Ok(unsafe { ObjectId::<obj::Actuator>::new_unchecked(index as usize) })
     }
 }
 impl oxide_control::Action for AcrobotAction {
     type Physics = Acrobot;
-    
-    fn apply(self, actuators: &mut oxide_control::physics::Actuators<'_>) {
+
+    fn apply(&self, actuators: &mut oxide_control::physics::Actuators<'_>) {
         assert!(!self.torque.is_nan(), "Torque cannot be NaN");
-        assert!((-1.0..=1.0).contains(&self.torque), "Torque must be in the range [-1.0, 1.0]");
+        assert!(
+            (-1.0..=1.0).contains(&self.torque),
+            "Torque must be in the range [-1.0, 1.0]"
+        );
         actuators.set(self.actuator_id, self.torque);
     }
 }
@@ -228,7 +259,7 @@ impl QTableAgent {
 
     pub fn new(
         config: &QTableAgentConfig,
-        env: &oxide_control::Environment<AcrobotBalanceTask, AcrobotAction>,
+        env: &oxide_control::Environment<AcrobotBalanceTask>,
     ) -> Self {
         let qtable = QTable::new_with(QConfig {
             action_size: config.action_size,
@@ -246,10 +277,7 @@ impl QTableAgent {
         }
     }
 
-    pub fn get_action<S: qtable::Strategy>(
-        &self,
-        state: AcrobotState,
-    ) -> AcrobotAction {
+    pub fn get_action<S: qtable::Strategy>(&self, state: AcrobotState) -> AcrobotAction {
         let qtable_state = qtable::State::new_on(&self.qtable, state.digitized_state).unwrap();
         let qtable_action = self.qtable.next_action::<S>(qtable_state);
         self.digitized_actions[qtable_action.index()]
@@ -297,6 +325,9 @@ impl TrainedAgent {
         QTableAgent::load(qtable_filename).map(Self)
     }
 
+    pub fn action_size(&self) -> usize {
+        self.0.digitized_actions.len()
+    }
     pub fn n_arm_digitization(&self) -> usize {
         self.0.n_arm_digitization
     }
