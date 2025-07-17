@@ -171,7 +171,7 @@ fn main() {
             );
         }
         if episode % model_save_interval == 0 {
-            print!("----> saveing current agent as a file...");
+            print!("----> saving current agent as a file...");
             std::io::Write::flush(&mut std::io::stdout()).unwrap();
             agent
                 .save(model_save_directory.join(format!("agent_{episode}@{}.json", episode_reward.round() as usize)))
