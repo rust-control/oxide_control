@@ -67,7 +67,7 @@ fn main() {
         n_arm_digitization: usize = @"N_ARM_DIGITIZATION" || 15;
         n_pendulum_digitization: usize = @"N_PENDULUM_DIGITIZATION" || 16;
         max_episodes: usize = @"MAX_EPISODES" || 1000000;
-        episode_length: usize = @"EPISODE_LENGTH" || 5000;
+        episode_length: usize = @"EPISODE_LENGTH" || 6000;
         model_save_interval: usize = @"MODEL_LOG_INTERVAL" || 10000;
         model_restore_file: std::path::PathBuf = @"MODEL_RESTORE_FILE";
         model_save_directory: std::path::PathBuf = @"MODEL_LOG_DIRECTORY" || std::env::current_dir().unwrap()
@@ -77,7 +77,7 @@ fn main() {
 
     std::fs::create_dir_all(&model_save_directory).expect("Failed to create model log directory");
     
-    print!("loading environment and agent...");
+    print!("----> loading environment and agent...");
     std::io::Write::flush(&mut std::io::stdout()).unwrap();
 
     let mut env = oxide_control::Environment::new(
@@ -171,7 +171,7 @@ fn main() {
             );
         }
         if episode % model_save_interval == 0 {
-            print!("[episode {episode:>7}]  saveing agent as a file...");
+            print!("----> saveing current agent as a file...");
             std::io::Write::flush(&mut std::io::stdout()).unwrap();
             agent
                 .save(model_save_directory.join(format!("agent_{episode}@{}.json", episode_reward.round() as usize)))
