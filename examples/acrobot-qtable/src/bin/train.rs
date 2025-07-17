@@ -76,7 +76,7 @@ fn main() {
     }
 
     std::fs::create_dir_all(&model_save_directory).expect("Failed to create model log directory");
-    
+
     print!("----> loading environment and agent...");
     std::io::Write::flush(&mut std::io::stdout()).unwrap();
 
@@ -102,8 +102,8 @@ fn main() {
             Some(path) => QTableAgent::load(&path).expect(&format!("Failed to resotore agent from Q-table file `{}`", path.display())),
         }
     };
-    
-    println!(" loaded");
+
+    println!(" ✅loaded");
 
     // initialize the qtable by randomly exploring the environment
     for _ in 0..100 {
@@ -173,10 +173,16 @@ fn main() {
         if episode % model_save_interval == 0 {
             print!("----> saving current agent as a file...");
             std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            agent
-                .save(model_save_directory.join(format!("agent_{episode}@{}.json", episode_reward.round() as usize)))
-                .expect("Failed to save agent");
-            println!(" done");
+            let filename = format!("agent_{episode}@{}.json", episode_reward.round() as usize);
+            let path = model_save_directory.join(&filename);
+            agent.save(&path).expect("Failed to save agent");
+            println!(
+                " 📄./{}",
+                path.iter()
+                    .skip(std::env::current_dir().unwrap().iter().count())
+                    .collect::<std::path::PathBuf>()
+                    .display()
+            );
         }
 
         agent.decay_alpha_with_rate(0.9999);
