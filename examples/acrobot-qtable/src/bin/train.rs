@@ -97,7 +97,7 @@ fn main() {
             initial_alpha: 0.1,
             initial_epsilon: 0.5,
         };
-        match model_restore_file {
+        match &model_restore_file {
             None => QTableAgent::new(&config, &env),
             Some(path) => QTableAgent::load(&path).expect(&format!("Failed to resotore agent from Q-table file `{}`", path.display())),
         }
@@ -105,28 +105,30 @@ fn main() {
 
     println!(" ✅loaded");
 
-    // initialize the qtable by randomly exploring the environment
-    for _ in 0..100 {
-        /* warmup */
-        let mut obs = env.reset();
-        for _ in 0..400 {
-            /* warmup step */
-            let state = env.task().state(&obs);
-            let action = agent.get_action::<strategy::Random>(state);
-            match env.step(action) {
-                TimeStep::Step {
-                    observation,
-                    reward,
-                    discount: _,
-                } => {
-                    let next_state = env.task().state(&observation);
-                    agent.learn(state, action, reward, next_state);
-                    obs = observation;
-                }
-                TimeStep::Finish { observation, reward } => {
-                    let next_state = env.task().state(&observation);
-                    agent.learn(state, action, reward, next_state);
-                    break; // End the episode
+    if model_restore_file.is_none() {
+        // initialize the qtable by randomly exploring the environment
+        for _ in 0..100 {
+            /* warmup */
+            let mut obs = env.reset();
+            for _ in 0..400 {
+                /* warmup step */
+                let state = env.task().state(&obs);
+                let action = agent.get_action::<strategy::Random>(state);
+                match env.step(action) {
+                    TimeStep::Step {
+                        observation,
+                        reward,
+                        discount: _,
+                    } => {
+                        let next_state = env.task().state(&observation);
+                        agent.learn(state, action, reward, next_state);
+                        obs = observation;
+                    }
+                    TimeStep::Finish { observation, reward } => {
+                        let next_state = env.task().state(&observation);
+                        agent.learn(state, action, reward, next_state);
+                        break; // End the episode
+                    }
                 }
             }
         }
