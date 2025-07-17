@@ -20,3 +20,7 @@ pub fn digitize(value: f64, bins: &[f64]) -> usize {
     }
     bins.len() - 1 // Return the last bin if value is greater than all bins
 }
+
+pub fn random(start: f64, end: f64) -> f64 {
+    rand::Rng::random_range(&mut rand::rng(), start..end)
+}

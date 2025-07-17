@@ -116,7 +116,7 @@ impl AcrobotBalanceTask {
         let n_pendulum_rad = np::digitize(pendulum_rad, &np::linspace(-0.2 * PI, 0.2 * PI, d_pendulum + 1)[1..d_pendulum]);
         let n_pendulum_vel = np::digitize(pendulum_vel.clamp(-8.0, 8.0), &np::linspace(-8.0, 8.0, d_pendulum + 1)[1..d_pendulum]);
 
-        let digitized_state = n_pendulum_rad + n_pendulum_vel * d_pendulum + n_arm_vel * d_pendulum.pow(2) + n_arm_rad * d_pendulum.pow(2) * d_arm;
+        let digitized_state = n_pendulum_rad + n_pendulum_vel * d_pendulum + n_arm_rad * d_pendulum.pow(2) + n_arm_vel * d_pendulum.pow(2) * d_arm;
 
         AcrobotState {
             n_arm_rad,
@@ -148,10 +148,10 @@ impl oxide_control::Task for AcrobotBalanceTask {
 
     fn init_episode(&self, physics: &mut Self::Physics) {
         let (elbow_id, shoulder_id) = (physics.elbow_id, physics.shoulder_id);
-        physics
-            .set_qpos::<joint::Hinge>(elbow_id, [rand::Rng::random_range(&mut rand::rng(), (-PI / 10.)..(PI / 10.))])
-            .unwrap();
-        physics.set_qpos::<joint::Hinge>(shoulder_id, [0.]).unwrap();
+        physics.set_qpos::<joint::Hinge>(elbow_id, [np::random(-0.1, 0.1)]).unwrap();
+        physics.set_qvel::<joint::Hinge>(elbow_id, [np::random(-0.1, 0.1)]).unwrap();
+        physics.set_qpos::<joint::Hinge>(shoulder_id, [np::random(-0.1, 0.1)]).unwrap();
+        physics.set_qvel::<joint::Hinge>(shoulder_id, [np::random(-0.1, 0.1)]).unwrap();
     }
 
     fn should_finish_episode(&self, observation: &Self::Observation) -> bool {
