@@ -6,23 +6,42 @@ use qtable::strategy;
 /// 元の Python コードベースを尊重して離散的な AcrobotState を用いている
 fn get_reward(task: &AcrobotBalanceTask, state: &AcrobotState, action: &AcrobotAction) -> f64 {
     if task.should_finish_episode(state) {
-        return -2000.0; // Penalty for finishing the episode
+        return -2000.0;
+    }
+
+    let pend_pos_center = task.n_pendulum_digitization as f64 / 2.0;
+    let arm_pos_center = task.n_arm_digitization as f64 / 2.0;
+    let pend_vel_center = task.n_pendulum_digitization as f64 / 2.0; 
+    let arm_vel_center = task.n_arm_digitization as f64 / 2.0;
+
+    if (state.n_pendulum_rad as f64 - pend_pos_center).abs() < 1.0 &&
+        (state.n_arm_rad as f64 - arm_pos_center).abs() < 1.0 &&
+        (state.n_pendulum_vel as f64 - pend_vel_center).abs() < 1.0 &&
+        (state.n_arm_vel as f64 - arm_vel_center).abs() < 1.0
+    {
+        return 500.0;
     }
 
     let position_reward = {
         const MAX_REWARD: f64 = 10.0;
-        let pendulum_pos_error = (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_rad as f64).abs().floor().powi(2);
-        let arm_pos_error = (task.n_arm_digitization as f64 / 2.0 - state.n_arm_rad as f64).abs().floor().powi(2);
+        let pendulum_pos_error = (pend_pos_center - state.n_pendulum_rad as f64).powi(2);
+        let arm_pos_error = (arm_pos_center - state.n_arm_rad as f64).powi(2);
         MAX_REWARD - (0.2 * pendulum_pos_error + 0.1 * arm_pos_error)
     };
 
     let velocity_penalty = {
-        let pendulum_vel_error = (task.n_pendulum_digitization as f64 / 2.0 - state.n_pendulum_vel as f64).abs().floor().powi(2);
-        let arm_vel_error = (task.n_pendulum_digitization as f64 / 2.0 - state.n_arm_vel as f64).abs().floor().powi(2);
+        let pendulum_vel_error = (pend_vel_center - state.n_pendulum_vel as f64).powi(2);
+        let arm_vel_error = (arm_vel_center - state.n_arm_vel as f64).powi(2);
         0.001 * pendulum_vel_error + 0.002 * arm_vel_error
     };
 
-    let action_cost = { 0.02 * (task.action_size as f64 / 2.0 - action.digitization_index as f64).abs().floor() };
+    // この場合 action は「何もしない」真ん中が設定されていることを想定している。
+    // よって task.action_size は奇数を前提として、真ん中の index のときに
+    // action_cost が厳密に 0 になるようにしている
+    let action_cost = {
+        let center_action_index = (task.action_size - 1) as f64 / 2.0;
+        0.01 * (center_action_index - action.digitization_index as f64).abs()
+    };
 
     position_reward - velocity_penalty - action_cost
 }
