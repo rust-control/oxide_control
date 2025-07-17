@@ -68,7 +68,7 @@ fn main() {
         n_pendulum_digitization: usize = @"N_PENDULUM_DIGITIZATION" || 16;
         max_episodes: usize = @"MAX_EPISODES" || 1000000;
         episode_length: usize = @"EPISODE_LENGTH" || 5000;
-        model_save_interval: usize = @"MODEL_LOG_INTERVAL" || 1000;
+        model_save_interval: usize = @"MODEL_LOG_INTERVAL" || 10000;
         model_restore_file: std::path::PathBuf = @"MODEL_RESTORE_FILE";
         model_save_directory: std::path::PathBuf = @"MODEL_LOG_DIRECTORY" || std::env::current_dir().unwrap()
             .join("models")
@@ -76,6 +76,9 @@ fn main() {
     }
 
     std::fs::create_dir_all(&model_save_directory).expect("Failed to create model log directory");
+    
+    print!("loading environment and agent...");
+    std::io::Write::flush(&mut std::io::stdout()).unwrap();
 
     let mut env = oxide_control::Environment::new(
         Acrobot::new(),
@@ -99,6 +102,8 @@ fn main() {
             Some(path) => QTableAgent::load(&path).expect(&format!("Failed to resotore agent from Q-table file `{}`", path.display())),
         }
     };
+    
+    println!(" loaded");
 
     // initialize the qtable by randomly exploring the environment
     for _ in 0..100 {
@@ -130,12 +135,14 @@ fn main() {
     // main training loop
     for episode in 1..=max_episodes {
         /* episode */
-        let start_time = env.physics().time(); //std::time::Instant::now();
+        env.physics_mut().set_time(0.0);
         let mut episode_reward = 0.0;
         let mut obs = env.reset();
 
+        let mut step_count = 0;
         for _ in 0..episode_length {
             /* step */
+            step_count += 1;
             let state = env.task().state(&obs);
             let action = agent.get_action::<strategy::EpsilonGreedy>(state);
             match env.step(action) {
@@ -157,18 +164,19 @@ fn main() {
             }
         }
 
-        if episode % 100 == 0 {
+        if episode % 1000 == 0 {
             println!(
-                "[episode {episode}]: return: {:.2}, time: {:.2}",
-                episode_reward,
-                env.physics().time() - start_time
+                "[episode {episode:>7}]  return: {episode_reward:>10.2}  |  step: {step_count:>4}/{episode_length}  |  time: {:>5.2}[s]",
+                env.physics().time(),
             );
         }
         if episode % model_save_interval == 0 {
-            println!("[epidoe {episode}]: saveing agent as file");
+            print!("[episode {episode:>7}]  saveing agent as a file...");
+            std::io::Write::flush(&mut std::io::stdout()).unwrap();
             agent
-                .save(model_save_directory.join(format!("agent-{episode}.json")))
+                .save(model_save_directory.join(format!("agent_{episode}@{}.json", episode_reward.round() as usize)))
                 .expect("Failed to save agent");
+            println!(" done");
         }
 
         agent.decay_alpha_with_rate(0.9999);
