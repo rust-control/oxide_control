@@ -11,13 +11,13 @@ fn get_reward(task: &AcrobotBalanceTask, state: &AcrobotState, action: &AcrobotA
 
     let pend_pos_center = task.n_pendulum_digitization as f64 / 2.0;
     let arm_pos_center = task.n_arm_digitization as f64 / 2.0;
-    let pend_vel_center = task.n_pendulum_digitization as f64 / 2.0; 
+    let pend_vel_center = task.n_pendulum_digitization as f64 / 2.0;
     let arm_vel_center = task.n_arm_digitization as f64 / 2.0;
 
-    if (state.n_pendulum_rad as f64 - pend_pos_center).abs() < 1.0 &&
-        (state.n_arm_rad as f64 - arm_pos_center).abs() < 1.0 &&
-        (state.n_pendulum_vel as f64 - pend_vel_center).abs() < 1.0 &&
-        (state.n_arm_vel as f64 - arm_vel_center).abs() < 1.0
+    if (state.n_pendulum_rad as f64 - pend_pos_center).abs() < 1.0
+        && (state.n_arm_rad as f64 - arm_pos_center).abs() < 1.0
+        && (state.n_pendulum_vel as f64 - pend_vel_center).abs() < 1.0
+        && (state.n_arm_vel as f64 - arm_vel_center).abs() < 1.0
     {
         return 500.0;
     }
@@ -68,14 +68,14 @@ fn main() {
         n_pendulum_digitization: usize = @"N_PENDULUM_DIGITIZATION" || 16;
         max_episodes: usize = @"MAX_EPISODES" || 1000000;
         episode_length: usize = @"EPISODE_LENGTH" || 5000;
-        model_log_interval: usize = @"MODEL_LOG_INTERVAL" || 2000;
+        model_save_interval: usize = @"MODEL_LOG_INTERVAL" || 1000;
         model_restore_file: std::path::PathBuf = @"MODEL_RESTORE_FILE";
-        model_log_directory: std::path::PathBuf = @"MODEL_LOG_DIRECTORY" || std::env::current_dir().unwrap()
+        model_save_directory: std::path::PathBuf = @"MODEL_LOG_DIRECTORY" || std::env::current_dir().unwrap()
             .join("models")
             .join(chrono::Local::now().format("%m-%d-%H-%M-%S").to_string());
     }
 
-    std::fs::create_dir_all(&model_log_directory).expect("Failed to create model log directory");
+    std::fs::create_dir_all(&model_save_directory).expect("Failed to create model log directory");
 
     let mut env = oxide_control::Environment::new(
         Acrobot::new(),
@@ -130,7 +130,7 @@ fn main() {
     // main training loop
     for episode in 1..=max_episodes {
         /* episode */
-        let start_time = std::time::Instant::now();
+        let start_time = env.physics().time(); //std::time::Instant::now();
         let mut episode_reward = 0.0;
         let mut obs = env.reset();
 
@@ -157,11 +157,18 @@ fn main() {
             }
         }
 
-        if episode > 0 && episode % model_log_interval == 0 {
-            println!("[episode {episode}]: return: {:.2}, time: {:?}", episode_reward, start_time.elapsed());
+        if episode % 100 == 0 {
+            println!(
+                "[episode {episode}]: return: {:.2}, time: {:.2}",
+                episode_reward,
+                env.physics().time() - start_time
+            );
+        }
+        if episode % model_save_interval == 0 {
+            println!("[epidoe {episode}]: saveing agent as file");
             agent
-                .save(model_log_directory.join(format!("agent-{episode}.json")))
-                .expect("Failed to save Q-table");
+                .save(model_save_directory.join(format!("agent-{episode}.json")))
+                .expect("Failed to save agent");
         }
 
         agent.decay_alpha_with_rate(0.9999);
