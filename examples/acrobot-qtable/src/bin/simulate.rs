@@ -3,7 +3,6 @@ use oxide_control::TimeStep;
 use oxide_control::physics::binding::{
     mjr_makeContext, mjr_render, mjrContext, mjrRect, mjtCatBit, mjtFontScale, mjv_makeScene, mjv_updateScene, mjvCamera, mjvOption, mjvScene,
 };
-use qtable::strategy;
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -43,7 +42,7 @@ fn main() {
     let mut obs = env.reset();
     while !window.should_close() {
         while env.physics().time() < glfw.get_time() {
-            match env.step(t.get_action::<strategy::MostQValue>(env.task().state(&obs))) {
+            match env.step(t.get_action(env.task().state(&obs))) {
                 TimeStep::Step { observation, .. } => {
                     obs = observation;
                 }

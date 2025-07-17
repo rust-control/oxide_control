@@ -295,7 +295,7 @@ impl TrainedAgent {
         self.0.n_pendulum_digitization
     }
 
-    pub fn get_action<S: qtable::Strategy>(&self, state: AcrobotState) -> AcrobotAction {
-        self.0.get_action::<S>(state)
+    pub fn get_action(&self, state: AcrobotState) -> AcrobotAction {
+        self.0.get_action::<qtable::strategy::MostQValue>(state)
     }
 }
