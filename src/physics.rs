@@ -1,7 +1,6 @@
 pub use rusty_mujoco as binding;
 pub use binding::{mjModel, mjData, ObjectId, obj, Joint, joint, mjMAXVAL, mjMINVAL};
 
-use binding::{Obj, mjtObj};
 use crate::error::Error;
 
 pub struct Physics {
@@ -54,11 +53,11 @@ impl Physics {
         rusty_mujoco::mj_resetData(&self.model, &mut self.data);
     }
 
-    pub fn object_id<O: Obj>(&self, name: &str) -> Option<ObjectId<O>> {
+    pub fn object_id<O: binding::Obj>(&self, name: &str) -> Option<ObjectId<O>> {
         self.model.object_id(name)
     }
 
-    pub fn object_name<O: Obj>(&self, id: ObjectId<O>) -> String {
+    pub fn object_name<O: binding::Obj>(&self, id: ObjectId<O>) -> String {
         binding::mj_id2name::<O>(&self.model, id)
     }
 }
