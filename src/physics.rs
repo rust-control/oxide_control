@@ -1,5 +1,5 @@
 pub use rusty_mujoco as binding;
-pub use binding::{mjModel, mjData, ObjectId, obj, JointObjectId, Joint, mjMAXVAL, mjMINVAL};
+pub use binding::{mjModel, mjData, ObjectId, obj, Joint, joint, mjMAXVAL, mjMINVAL};
 
 use binding::{Obj, mjtObj};
 use crate::error::Error;
@@ -54,26 +54,12 @@ impl Physics {
         rusty_mujoco::mj_resetData(&self.model, &mut self.data);
     }
 
-    pub fn object_id_of<O: Obj>(&self, name: &str) -> Option<ObjectId<O>> {
-        binding::mj_name2id::<O>(&self.model, name)
+    pub fn object_id<O: Obj>(&self, name: &str) -> Option<ObjectId<O>> {
+        self.model.object_id(name)
     }
 
-    pub fn object_name_of<O: Obj>(&self, id: ObjectId<O>) -> String {
+    pub fn object_name<O: Obj>(&self, id: ObjectId<O>) -> String {
         binding::mj_id2name::<O>(&self.model, id)
-    }
-
-    pub fn object_count_of<O: Obj>(&self) -> usize {
-        match O::TYPE {
-            mjtObj::BODY => self.model.nbody(),
-            mjtObj::JOINT => self.model.njnt(),
-            mjtObj::GEOM => self.model.ngeom(),
-            mjtObj::SITE => self.model.nsite(),
-            mjtObj::CAMERA => self.model.ncam(),
-            mjtObj::LIGHT => self.model.nlight(),
-            mjtObj::TENDON => self.model.ntendon(),
-            mjtObj::ACTUATOR => self.model.nu(),
-            _ => 0,
-        }
     }
 }
 
@@ -116,17 +102,17 @@ impl Physics {
         self.data.set_act(id, value, &self.model)
     }
 
-    pub fn qpos<J: Joint>(&self, id: JointObjectId<J>) -> J::Qpos {
+    pub fn qpos<J: Joint>(&self, id: ObjectId<J>) -> J::Qpos {
         self.data.qpos(id, &self.model)
     }
-    pub fn set_qpos<J: Joint>(&mut self, id: JointObjectId<J>, qpos: J::Qpos) {
+    pub fn set_qpos<J: Joint>(&mut self, id: ObjectId<J>, qpos: J::Qpos) {
         self.data.set_qpos(id, qpos, &self.model);
     }
 
-    pub fn qvel<J: Joint>(&self, id: JointObjectId<J>) -> J::Qvel {
+    pub fn qvel<J: Joint>(&self, id: ObjectId<J>) -> J::Qvel {
         self.data.qvel(id, &self.model)
     }
-    pub fn set_qvel<J: Joint>(&mut self, id: JointObjectId<J>, qvel: J::Qvel) {
+    pub fn set_qvel<J: Joint>(&mut self, id: ObjectId<J>, qvel: J::Qvel) {
         self.data.set_qvel(id, qvel, &self.model);
     }
 
