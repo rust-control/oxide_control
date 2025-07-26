@@ -13,4 +13,4 @@ keywords      = ["mujoco", "rl", "ml", "physics", "robotics"]
 categories    = ["science::robotics", "simulation"]
 
 [dependencies]
-rusty_mujoco = { path = "../rusty_mujoco" }
+rusty_mujoco = { path = "../rusty_mujoco", version = "0.0.1" }
