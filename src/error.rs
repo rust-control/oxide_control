@@ -1,0 +1,82 @@
+use rusty_mujoco::{obj, ObjectId};
+
+pub enum Error {
+    Mujoco(::rusty_mujoco::MjError),
+    Mjs(String),
+    NameNotFound(&'static str),
+    PhysicsDiverged,
+    JointTypeNotMatch {
+        expected: ::rusty_mujoco::bindgen::mjtJoint,
+        found: ::rusty_mujoco::bindgen::mjtJoint,
+    },
+    ActuatorStateless(ObjectId<obj::Actuator>),
+    PluginStateless(ObjectId<obj::Plugin>),
+    BodyNotMocap(ObjectId<obj::Body>),
+}
+
+impl From<::rusty_mujoco::MjError> for Error {
+    fn from(e: ::rusty_mujoco::MjError) -> Self {
+        Error::Mujoco(e)
+    }
+}
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Mujoco(e) => write!(f, "Error::MuJoCo({e:?})"),
+            Error::Mjs(msg) => write!(f, "Error::Mjs({msg})"),
+            Error::NameNotFound(name) => write!(f, "Error::NameNotFound({name})"),
+            Error::PhysicsDiverged => write!(f, "Error::PhysicsDiverged"),
+            Error::JointTypeNotMatch { expected, found } => {
+                write!(f, "Error::JointTypeNotMatch(expected: {expected:?}, found: {found:?})")
+            }
+            Error::ActuatorStateless(actuator_id) => {
+                write!(f, "Error::ActuatorStateless({actuator_id:?})")
+            }
+            Error::PluginStateless(plugin_id) => {
+                write!(f, "Error::PluginStateless({plugin_id:?})")
+            }
+            Error::BodyNotMocap(body_id) => {
+                write!(f, "Error::BodyNotMocap({body_id:?})")
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Mujoco(e) => write!(f, "MuJoCo error: {e}"),
+            Error::Mjs(msg) => write!(f, "MuJoCo error: {msg}"),
+            Error::NameNotFound(name) => write!(f, "Given name not found: `{name}`"),
+            Error::PhysicsDiverged => write!(f, "Physics simulation diverged"),
+            Error::JointTypeNotMatch { expected, found } => {
+                write!(f, "Joint type mismatch: expected {expected:?}, found {found:?}")
+            }
+            Error::ActuatorStateless(actuator_id) => {
+                write!(f, "Actuator with ID {actuator_id:?} is stateless unexpectedly")
+            }
+            Error::PluginStateless(plugin_id) => {
+                write!(f, "Plugin with ID {plugin_id:?} is stateless unexpectedly")
+            }
+            Error::BodyNotMocap(body_id) => {
+                write!(f, "Body with ID {body_id:?} is not a mocap body")
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Mujoco(e) => Some(e),
+            Error::Mjs(_) => None,
+            Error::NameNotFound(_) => None,
+            Error::PhysicsDiverged => None,
+            Error::JointTypeNotMatch { .. } => None,
+            Error::ActuatorStateless(_) => None,
+            Error::PluginStateless(_) => None,
+            Error::BodyNotMocap(_) => None,
+        }
+    }
+}
