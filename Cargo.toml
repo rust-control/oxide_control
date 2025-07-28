@@ -8,9 +8,9 @@ homepage      = "https://crates.io/crates/oxide_control"
 repository    = "https://github.com/rust-control/oxide_control"
 readme        = "README.md"
 license       = "MIT"
-description   = "A high-level interface for reinforcement learning and control tasks in MuJoCo environments"
+description   = "Rust software stack for physics-based simulation and Reinforcement Learning environments, using MuJoCo"
 keywords      = ["mujoco", "rl", "ml", "physics", "robotics"]
 categories    = ["science::robotics", "simulation"]
 
 [dependencies]
-rusty_mujoco = { path = "../rusty_mujoco", version = "0.1.0" }
+rusty_mujoco = "0.1.0"
